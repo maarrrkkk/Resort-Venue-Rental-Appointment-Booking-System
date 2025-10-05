@@ -14,10 +14,14 @@ A web application for booking resort venues built with PHP, MySQL, HTML, CSS, an
 ## Installation
 
 1. Set up a PHP environment with MySQL (e.g., XAMPP).
-2. Copy `.env.example` to `.env` and configure your environment variables (database, email, etc.).
-3. Place the project in your web server's root directory.
-4. Access the application via your browser (the database will be created automatically).
-5. Configure Gmail App Password for email functionality (see Email Configuration section).
+2. Clone or download the project to your web server's root directory (e.g., `htdocs/` for XAMPP).
+3. Copy `.env.example` to `.env`: `cp .env.example .env`
+4. Edit `.env` with your local configuration (database credentials, Gmail settings, etc.).
+5. **Important**: Update `BASE_URL` in `.env` to match your local setup:
+   - If project is in `htdocs/resort-venue-rental-appointment-booking-system/`: `BASE_URL=http://localhost/resort-venue-rental-appointment-booking-system`
+   - If project is directly in `htdocs/`: `BASE_URL=http://localhost`
+6. Access the application via your browser (the database will be created automatically).
+7. Set up Gmail App Password for email functionality (see Email Configuration section).
 
 ## Environment Configuration
 
@@ -48,6 +52,15 @@ USER1_EMAIL=john@example.com
 USER1_PASSWORD=admin123
 ```
 
+### SMTP Email Configuration
+```env
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=your-gmail@gmail.com
+SMTP_PASSWORD=your-16-character-app-password
+SMTP_ENCRYPTION=tls
+```
+
 ### Application Settings
 ```env
 BASE_URL=http://localhost
@@ -76,27 +89,25 @@ The application uses Gmail SMTP to send emails for inquiries and password reset 
 6. Click **Generate**
 7. Copy the 16-character password (it will look like: `abcd-efgh-ijkl-mnop`)
 
-### Step 3: Configure Email Settings
+### Step 3: Configure Email Settings in .env
 
-#### For Inquiry Emails (`api/sendInquiry.php`):
-```php
-$mail->Username = 'your-gmail@gmail.com'; // Replace with your Gmail address
-$mail->Password = 'abcd-efgh-ijkl-mnop'; // Replace with your 16-character app password
-$mail->setFrom('your-gmail@gmail.com', 'Resort Booking System');
-```
+Add your Gmail credentials to the `.env` file:
 
-#### For Password Reset Emails (`api/forgotPassword.php`):
-```php
-$mail->Username = 'your-gmail@gmail.com'; // Replace with your Gmail address
-$mail->Password = 'abcd-efgh-ijkl-mnop'; // Replace with your 16-character app password
-$mail->setFrom('your-gmail@gmail.com', 'Resort Booking System');
+```env
+# PHPMailer SMTP Configuration
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=your-gmail@gmail.com
+SMTP_PASSWORD=abcd-efgh-ijkl-mnop
+SMTP_ENCRYPTION=tls
 ```
 
 **Important Notes:**
 - Use your actual Gmail address and the 16-character app password (not your regular password)
-- The app password has spaces in the format shown, but remove spaces when pasting into the code
+- The app password has spaces in the format shown, but remove spaces when pasting into the `.env` file
 - Keep your app password secure and don't share it
 - You can generate separate app passwords for different purposes if needed
+- The application automatically uses these settings for both inquiry emails and password reset emails
 
 ## Directory Structure
 

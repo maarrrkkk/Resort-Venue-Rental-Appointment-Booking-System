@@ -40,6 +40,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
 
+        // Check for upload errors first
+        $uploadError = null;
+        if (isset($_FILES['gcash_receipt'])) {
+            if ($_FILES['gcash_receipt']['error'] !== UPLOAD_ERR_OK) {
+                $uploadError = 'File upload failed. Please try again.';
+            } else {
+                $uploadDir = 'assets/images/gcashreceipt/';
+
+                // Create directory if it doesn't exist
+                if (!is_dir($uploadDir)) {
+                    mkdir($uploadDir, 0755, true);
+                }
+
+                $fileName = uniqid('gcash_') . '_' . basename($_FILES['gcash_receipt']['name']);
+                $targetFile = $uploadDir . $fileName;
+
+                // Validate file type (only images)
+                $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+                $fileType = $_FILES['gcash_receipt']['type'];
+
+                if (!in_array($fileType, $allowedTypes)) {
+                    $uploadError = 'Only image files (JPEG, PNG, GIF, WebP) are allowed.';
+                } elseif (!move_uploaded_file($_FILES['gcash_receipt']['tmp_name'], $targetFile)) {
+                    $uploadError = 'Failed to save uploaded file. Please try again.';
+                } else {
+                    // Store full URL using BASE_URL
+                    require_once 'includes/config.php';
+                    $baseUrl = env('BASE_URL', 'http://localhost');
+                    $gcashReceiptPath = $baseUrl . '/' . $targetFile;
+                }
+            }
+        }
+
+        // If there's an upload error, show it and don't proceed
+        if ($uploadError) {
+            echo "<script>
+                alert('Upload Error: " . addslashes($uploadError) . "');
+                window.location.href='index.php?page=booking';
+            </script>";
+            exit;
+        }
+
         // Use current POST data merged with session data for submit
         $currentData = array_merge($formData, $_POST);
 
@@ -49,16 +91,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $pricePerGuest = 50;
         $totalAmount = $venuePrice + ($guestCount * $pricePerGuest);
 
-        // Handle GCash receipt upload
-        $gcashReceiptPath = null;
-        if (isset($_FILES['gcash_receipt']) && $_FILES['gcash_receipt']['error'] === UPLOAD_ERR_OK) {
-            $uploadDir = 'assets/images/gcashreceipt/';
-            $fileName = uniqid('gcash_') . '_' . basename($_FILES['gcash_receipt']['name']);
-            $targetFile = $uploadDir . $fileName;
-            if (move_uploaded_file($_FILES['gcash_receipt']['tmp_name'], $targetFile)) {
-                $gcashReceiptPath = $targetFile;
-            }
-        }
+        // GCash receipt path (already set above with full URL)
+        // $gcashReceiptPath is already set with the full URL if upload was successful
 
         $stmt = $pdo->prepare("INSERT INTO bookings (id, user_id, venue_id, booking_date, start_time, end_time, duration, guest_count, event_type, special_requests, total_amount, gcash_receipt, status) VALUES (?, ?, ?, ?, '08:00:00', '17:00:00', 9, ?, ?, ?, ?, ?, 'pending')");
         $bookingId = uniqid('booking_');

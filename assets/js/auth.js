@@ -410,7 +410,7 @@ class AuthManager {
                         <td>${this.escapeHtml(b.user_name)}</td>
                         <td>${this.escapeHtml(b.venue_name)}</td>
                         <td>₱${parseFloat(b.amount ?? 0).toFixed(2)}</td>
-                        <td>${b.gcash_receipt ? `<a href="../${b.gcash_receipt}" target="_blank"><img src="../${b.gcash_receipt}" alt="GCash Receipt" style="max-width: 100px; max-height: 100px;" class="img-thumbnail"></a>` : 'No receipt'}</td>
+                        <td>${b.gcash_receipt ? `<a href="${b.gcash_receipt}" target="_blank"><img src="${b.gcash_receipt}" alt="GCash Receipt" style="max-width: 100px; max-height: 100px;" class="img-thumbnail"></a>` : 'No receipt'}</td>
                         <td><span class="badge ${this.getStatusBadgeClass(b.status ?? 'pending')}">${this.capitalize(b.status ?? 'pending')}</span></td>
                         <td>${this.formatDate(b.created_at ?? '')}</td>
                         <td>
