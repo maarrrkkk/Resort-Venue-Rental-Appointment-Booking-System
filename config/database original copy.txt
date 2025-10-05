@@ -1,0 +1,279 @@
+<?php
+/**
+ * Paradise Resort Booking System - Database Setup
+ */
+
+$host = "localhost";       // Database host
+$user = "root";            // Database username
+$pass = "";                // Database password
+$dbname = "resort_booking";
+
+try {
+    // Connect without selecting DB first
+    $pdo = new PDO("mysql:host=$host;charset=utf8mb4", $user, $pass);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+    echo "Connected to MySQL successfully.<br>";
+
+    // Create database
+    $pdo->exec("CREATE DATABASE IF NOT EXISTS $dbname CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+    echo "Database `$dbname` created or already exists.<br>";
+
+    // Switch to the database
+    $pdo->exec("USE $dbname");
+
+    // Full schema as one string
+    $schema = <<<SQL
+    -- Users table
+    CREATE TABLE IF NOT EXISTS users (
+        id VARCHAR(50) PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        email VARCHAR(100) UNIQUE NOT NULL,
+        phone VARCHAR(20) NOT NULL,
+        password_hash VARCHAR(255) NOT NULL,
+        role ENUM('client', 'admin') DEFAULT 'client',
+        avatar VARCHAR(255) NULL,
+        email_verified BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_email (email),
+        INDEX idx_role (role)
+    );
+
+    -- Venues table
+    CREATE TABLE IF NOT EXISTS venues (
+        id VARCHAR(50) PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        description TEXT NOT NULL,
+        capacity INT NOT NULL,
+        price DECIMAL(10,2) NOT NULL,
+        category ENUM('ballroom', 'outdoor', 'conference', 'garden') NOT NULL,
+        location VARCHAR(200) NOT NULL,
+        amenities JSON NOT NULL,
+        images JSON NOT NULL,
+        setup_options JSON NULL,
+        catering_options JSON NULL,
+        booking_requirements JSON NULL,
+        availability BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_category (category),
+        INDEX idx_capacity (capacity),
+        INDEX idx_price (price),
+        INDEX idx_availability (availability)
+    );
+
+    -- Bookings table
+    CREATE TABLE IF NOT EXISTS bookings (
+        id VARCHAR(50) PRIMARY KEY,
+        user_id VARCHAR(50) NOT NULL,
+        venue_id VARCHAR(50) NOT NULL,
+        booking_date DATE NOT NULL,
+        start_time TIME NOT NULL,
+        end_time TIME NOT NULL,
+        duration INT NOT NULL COMMENT 'Duration in hours',
+        guest_count INT NOT NULL,
+        event_type VARCHAR(100) NOT NULL,
+        special_requests TEXT NULL,
+        total_amount DECIMAL(10,2) NOT NULL,
+        status ENUM('pending', 'confirmed', 'cancelled', 'completed') DEFAULT 'pending',
+        payment_status ENUM('pending', 'paid', 'refunded', 'partial') DEFAULT 'pending',
+        cancellation_reason TEXT NULL,
+        admin_notes TEXT NULL,
+        confirmation_code VARCHAR(20) NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (venue_id) REFERENCES venues(id) ON DELETE CASCADE,
+        INDEX idx_user_id (user_id),
+        INDEX idx_venue_id (venue_id),
+        INDEX idx_booking_date (booking_date),
+        INDEX idx_status (status),
+        INDEX idx_payment_status (payment_status),
+        UNIQUE KEY unique_venue_datetime (venue_id, booking_date, start_time)
+    );
+
+    -- Payments table
+    CREATE TABLE IF NOT EXISTS payments (
+        id VARCHAR(50) PRIMARY KEY,
+        booking_id VARCHAR(50) NOT NULL,
+        amount DECIMAL(10,2) NOT NULL,
+        payment_method ENUM('credit_card', 'debit_card', 'bank_transfer', 'cash', 'check') NOT NULL,
+        payment_status ENUM('pending', 'completed', 'failed', 'refunded') DEFAULT 'pending',
+        transaction_id VARCHAR(100) NULL,
+        payment_gateway VARCHAR(50) NULL,
+        payment_date TIMESTAMP NULL,
+        refund_amount DECIMAL(10,2) DEFAULT 0.00,
+        refund_date TIMESTAMP NULL,
+        notes TEXT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE,
+        INDEX idx_booking_id (booking_id),
+        INDEX idx_payment_status (payment_status),
+        INDEX idx_payment_date (payment_date)
+    );
+
+    -- Venue availability blackouts
+    CREATE TABLE IF NOT EXISTS venue_blackouts (
+        id VARCHAR(50) PRIMARY KEY,
+        venue_id VARCHAR(50) NOT NULL,
+        start_date DATE NOT NULL,
+        end_date DATE NOT NULL,
+        reason VARCHAR(200) NOT NULL,
+        created_by VARCHAR(50) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (venue_id) REFERENCES venues(id) ON DELETE CASCADE,
+        FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE,
+        INDEX idx_venue_id (venue_id),
+        INDEX idx_date_range (start_date, end_date)
+    );
+
+    -- Contact inquiries
+    CREATE TABLE IF NOT EXISTS contact_inquiries (
+        id VARCHAR(50) PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        email VARCHAR(100) NOT NULL,
+        phone VARCHAR(20) NULL,
+        subject VARCHAR(200) NULL,
+        message TEXT NOT NULL,
+        status ENUM('new', 'in_progress', 'resolved') DEFAULT 'new',
+        assigned_to VARCHAR(50) NULL,
+        response TEXT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (assigned_to) REFERENCES users(id) ON DELETE SET NULL,
+        INDEX idx_status (status),
+        INDEX idx_email (email),
+        INDEX idx_created_at (created_at)
+    );
+
+    -- System logs
+    CREATE TABLE IF NOT EXISTS system_logs (
+        id BIGINT AUTO_INCREMENT PRIMARY KEY,
+        user_id VARCHAR(50) NULL,
+        action VARCHAR(100) NOT NULL,
+        entity_type VARCHAR(50) NOT NULL,
+        entity_id VARCHAR(50) NULL,
+        old_values JSON NULL,
+        new_values JSON NULL,
+        ip_address VARCHAR(45) NULL,
+        user_agent TEXT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+        INDEX idx_user_id (user_id),
+        INDEX idx_action (action),
+        INDEX idx_entity (entity_type, entity_id),
+        INDEX idx_created_at (created_at)
+    );
+
+    -- Email queue
+    CREATE TABLE IF NOT EXISTS email_queue (
+        id BIGINT AUTO_INCREMENT PRIMARY KEY,
+        to_email VARCHAR(100) NOT NULL,
+        to_name VARCHAR(100) NOT NULL,
+        subject VARCHAR(200) NOT NULL,
+        body_html TEXT NOT NULL,
+        body_text TEXT NULL,
+        template_name VARCHAR(100) NULL,
+        template_data JSON NULL,
+        status ENUM('pending', 'sent', 'failed', 'cancelled') DEFAULT 'pending',
+        attempts INT DEFAULT 0,
+        max_attempts INT DEFAULT 3,
+        scheduled_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        sent_at TIMESTAMP NULL,
+        error_message TEXT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_status (status),
+        INDEX idx_scheduled_at (scheduled_at),
+        INDEX idx_to_email (to_email)
+    );
+
+    -- Settings table
+    CREATE TABLE IF NOT EXISTS settings (
+        setting_key VARCHAR(100) PRIMARY KEY,
+        setting_value TEXT NOT NULL,
+        setting_type ENUM('string', 'number', 'boolean', 'json') DEFAULT 'string',
+        description TEXT NULL,
+        updated_by VARCHAR(50) NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
+    );
+
+    -- Default users
+    INSERT IGNORE INTO users (id, name, email, phone, password_hash, role) VALUES
+    ('admin1', 'Resort Manager', 'admin@resort.com', '+1-234-567-8999', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin'),
+    ('user1', 'John Smith', 'john@example.com', '+1-234-567-8900', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'client'),
+    ('user2', 'Sarah Johnson', 'sarah@example.com', '+1-234-567-8901', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'client');
+
+    -- Default venues
+    INSERT IGNORE INTO venues (id, name, description, capacity, price, category, location, amenities, images) VALUES
+    ('venue1', 'Grand Ballroom', 'Elegant ballroom perfect for weddings...', 200, 5000.00, 'ballroom', 'Main Building, Level 2',
+    '["Crystal Chandeliers","Dance Floor","Stage"]', '["https://images.unsplash.com/photo-1724855946369-9b4612c40fc2"]'),
+    ('venue2', 'Oceanview Terrace', 'Stunning outdoor venue with panoramic...', 150, 3500.00, 'outdoor', 'West Wing, Terrace Level',
+    '["Ocean View","Outdoor Bar","Lounge Areas"]', '["https://images.unsplash.com/photo-1625600879300-d59b96290d03"]'),
+    ('venue3', 'Executive Conference Center', 'Modern conference facility equipped...', 100, 2000.00, 'conference', 'Business Center, Ground Floor',
+    '["AV Equipment","High-Speed WiFi","Video Conferencing"]', '["https://images.unsplash.com/photo-1687945727613-a4d06cc41024"]');
+
+    -- Default settings
+    INSERT IGNORE INTO settings (setting_key, setting_value, setting_type, description) VALUES
+    ('site_name', 'Paradise Resort', 'string', 'Website name'),
+    ('contact_email', 'events@paradiseresort.com', 'string', 'Main contact email'),
+    ('contact_phone', '+1 (555) 123-4567', 'string', 'Main contact phone'),
+    ('booking_advance_days', '30', 'number', 'Minimum days in advance for booking'),
+    ('cancellation_policy_days', '14', 'number', 'Days before event for free cancellation'),
+    ('default_event_duration', '4', 'number', 'Default event duration in hours'),
+    ('max_guests_per_booking', '500', 'number', 'Maximum guests allowed per booking'),
+    ('email_notifications_enabled', 'true', 'boolean', 'Enable email notifications'),
+    ('maintenance_mode', 'false', 'boolean', 'Enable maintenance mode');
+
+    -- Indexes
+    CREATE INDEX idx_bookings_date_status ON bookings(booking_date, status);
+    CREATE INDEX idx_venues_category_availability ON venues(category, availability);
+    CREATE INDEX idx_users_email_role ON users(email, role);
+
+    -- Views
+    CREATE OR REPLACE VIEW booking_details AS
+    SELECT 
+        b.id,
+        b.booking_date,
+        b.start_time,
+        b.end_time,
+        b.duration,
+        b.guest_count,
+        b.event_type,
+        b.total_amount,
+        b.status,
+        b.payment_status,
+        b.created_at,
+        u.name as client_name,
+        u.email as client_email,
+        u.phone as client_phone,
+        v.name as venue_name,
+        v.category as venue_category,
+        v.location as venue_location
+    FROM bookings b
+    JOIN users u ON b.user_id = u.id
+    JOIN venues v ON b.venue_id = v.id;
+
+    CREATE OR REPLACE VIEW venue_bookings_summary AS
+    SELECT 
+        v.id,
+        v.name,
+        v.category,
+        COUNT(b.id) as total_bookings,
+        COUNT(CASE WHEN b.status = 'confirmed' THEN 1 END) as confirmed_bookings,
+        SUM(CASE WHEN b.payment_status = 'paid' THEN b.total_amount ELSE 0 END) as total_revenue,
+        AVG(b.guest_count) as avg_guest_count
+    FROM venues v
+    LEFT JOIN bookings b ON v.id = b.venue_id
+    GROUP BY v.id, v.name, v.category;
+SQL;
+
+    // Execute schema
+    $pdo->exec($schema);
+    echo "Database schema and default data installed successfully!<br>";
+
+} catch (PDOException $e) {
+    die("Database setup failed: " . $e->getMessage());
+}

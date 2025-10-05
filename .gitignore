@@ -1,0 +1,31 @@
+# Environment variables
+.env
+
+# Database files
+*.sql
+*.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Node modules (if any)
+node_modules/
+
+# Uploaded files (should be in gitignore for production)
+assets/uploads/
+assets/images/gcashreceipt/

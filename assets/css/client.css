@@ -1,0 +1,588 @@
+/* Custom CSS for Paradise Resort */
+
+:root {
+  --primary-color: #030213;
+  --secondary-color: #6c757d;
+  --success-color: #198754;
+  --warning-color: #ffc107;
+  --danger-color: #dc3545;
+  --light-bg: #f8f9fa;
+  --border-radius: 0.625rem;
+}
+
+/* Typography */
+.display-1 {
+  font-weight: 600;
+}
+
+.display-4 {
+  font-weight: 600;
+}
+
+/* Hero Section */
+.hero-section {
+  min-height: 90vh;
+  background: url('https://images.unsplash.com/photo-1625600879300-d59b96290d03?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxsdXh1cnklMjByZXNvcnQlMjB2ZW51ZSUyMG91dGRvb3J8ZW58MXx8fHwxNzU5MTIxNjI2fDA&ixlib=rb-4.1.0&q=80&w=1920') no-repeat center center/cover;
+  position: relative;
+  overflow: hidden;
+  color: #fff; /* ensures text is visible */
+}
+
+/* Gradient Overlay */
+.hero-section::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    rgba(3, 2, 19, 0.6) 0%,   /* lighter at top */
+    rgba(3, 2, 19, 0.5) 50%,/* softer middle */
+    rgba(3, 2, 19, 0.7) 100% /* slightly darker bottom */
+  );
+  z-index: 1;
+}
+
+/* Make text stand out more */
+.hero-section .container {
+  position: relative;
+  z-index: 2;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+/* Animations */
+.animate-fadeIn {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 1s ease, transform 1s ease;
+}
+
+.animate-fadeIn.delay-1s {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.animate-fadeIn.delay-2s {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+/* Trigger animation on page load */
+body.loaded .animate-fadeIn.delay-1s,
+body.loaded .animate-fadeIn.delay-2s {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Button hover effects */
+.hover-scale {
+  transition: transform 0.2s ease, box-shadow 0.3s ease;
+}
+.hover-scale:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0.8rem 2rem rgba(0, 0, 0, 0.3);
+}
+
+
+/* Cards */
+.card {
+  border: none;
+  border-radius: var(--border-radius);
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+  transition: all 0.3s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.card-img-top {
+  border-radius: var(--border-radius) var(--border-radius) 0 0;
+  height: 200px;
+  object-fit: cover;
+}
+
+/* Buttons */
+.btn {
+  border-radius: var(--border-radius);
+  font-weight: 500;
+  padding: 0.5rem 1.5rem;
+}
+
+.btn-lg {
+  padding: 0.75rem 2rem;
+}
+
+/* Feature Icons */
+.feature-icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Badges */
+.badge {
+  border-radius: var(--border-radius);
+}
+
+.badge-status-confirmed {
+  background-color: var(--success-color);
+}
+
+.badge-status-pending {
+  background-color: var(--warning-color);
+  color: #000;
+}
+
+.badge-status-cancelled {
+  background-color: var(--danger-color);
+}
+
+.badge-status-completed {
+  background-color: #0d6efd;
+}
+
+/* Forms */
+.form-control,
+.form-select {
+  border-radius: var(--border-radius);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  padding: 0.75rem 1rem;
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 0.2rem rgba(3, 2, 19, 0.25);
+}
+
+/* Navigation */
+.navbar-brand {
+  font-size: 1.5rem;
+}
+
+.nav-link.active {
+  font-weight: 600;
+}
+
+/* Booking Steps */
+.booking-steps {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  margin: 0 1rem;
+}
+
+.step-number {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid #6c757d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  margin-right: 0.5rem;
+}
+
+.step.active .step-number {
+  background-color: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+}
+
+.step.completed .step-number {
+  background-color: var(--success-color);
+  color: white;
+  border-color: var(--success-color);
+}
+
+.step-connector {
+  width: 60px;
+  height: 2px;
+  background-color: #dee2e6;
+  margin: 0 1rem;
+}
+
+.step.active ~ .step .step-connector,
+.step.completed ~ .step .step-connector {
+  background-color: var(--primary-color);
+}
+
+/* Venue Selection */
+.venue-option {
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.venue-option:hover {
+  border-color: var(--primary-color);
+  background-color: rgba(3, 2, 19, 0.05);
+}
+
+.venue-option.selected {
+  border-color: var(--primary-color);
+  background-color: rgba(3, 2, 19, 0.1);
+}
+
+/* Admin Dashboard */
+.stats-card {
+  border-left: 4px solid var(--primary-color);
+}
+
+.stats-card.success {
+  border-left-color: var(--success-color);
+}
+
+.stats-card.warning {
+  border-left-color: var(--warning-color);
+}
+
+.stats-card.info {
+  border-left-color: #0dcaf0;
+}
+
+/* Tables */
+.table {
+  border-radius: var(--border-radius);
+  overflow: hidden;
+}
+
+.table thead th {
+  border-top: none;
+  font-weight: 600;
+}
+
+/* Modals */
+.modal-content {
+  border-radius: var(--border-radius);
+  border: none;
+}
+
+.modal-header {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.modal-footer {
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* Alerts */
+.alert {
+  border-radius: var(--border-radius);
+  border: none;
+}
+
+/* Loading Spinner */
+.spinner-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+/* Category Buttons */
+.category-buttons .btn {
+  min-width: 130px;
+  font-size: 0.95rem;
+  padding: 0.6rem 1.2rem;
+}
+
+.image-wrapper {
+  margin-top: 2rem;
+  width: 100%;
+  aspect-ratio: 16 / 12; /* keeps it landscape */
+  overflow: hidden;
+  border-radius: 0.75rem; /* matches rounded-3 */
+}
+
+.image-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* ensures it fills while staying landscape */
+}
+
+
+.preview-image-wrapper {
+  width: 100%;
+  aspect-ratio: 16 / 12; /* keeps it landscape */
+  overflow: hidden;
+  border-radius: 0.75rem; /* matches rounded-3 */
+}
+
+.preview-image-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* ensures it fills while staying landscape */
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+
+  .hero-section {
+    height: 400px;
+  }
+
+  .display-1 {
+    font-size: 2.5rem;
+  }
+
+  .booking-steps {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .step {
+    margin: 0.5rem 0;
+  }
+
+  .step-connector {
+    display: none;
+  }
+
+  .category-buttons {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .category-buttons .btn {
+    width: 100%;
+  }
+}
+
+/* Animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.5s ease-out;
+}
+
+/* Custom Utilities */
+.text-primary {
+  color: var(--primary-color) !important;
+}
+
+.bg-primary {
+  background-color: var(--primary-color) !important;
+}
+
+.border-primary {
+  border-color: var(--primary-color) !important;
+}
+
+.btn-primary {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.btn-primary:hover {
+  background-color: #020111;
+  border-color: #020111;
+}
+
+/* Booking Form Enhancements */
+.booking-summary {
+  background-color: var(--light-bg);
+  border-radius: var(--border-radius);
+  padding: 1.5rem;
+}
+
+.booking-summary h5 {
+  border-bottom: 2px solid var(--primary-color);
+  padding-bottom: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.summary-item {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.summary-total {
+  font-weight: 600;
+  font-size: 1.2rem;
+  border-top: 1px solid #dee2e6;
+  padding-top: 0.5rem;
+}
+
+/* Sidebar Venue Info */
+.venue-sidebar {
+  position: sticky;
+  top: 2rem;
+}
+
+.amenity-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.amenity-badge {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+}
+
+
+/* ========================= Booking Page Enhanced Styles ========================= */
+
+/* Headings */
+h2 {
+  font-size: 1.5rem;
+  color: #0d6efd;
+  border-bottom: 2px solid #e9ecef;
+  padding-bottom: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Progress Bar */
+.progress-wrapper {
+  width: 100%;
+  max-width: 650px;
+  margin: 0 auto 2.5rem auto;
+  text-align: center;
+}
+
+.progress {
+  height: 10px;
+  border-radius: 5px;
+  background-color: #f1f3f5;
+}
+
+.progress-bar {
+  background: linear-gradient(90deg, #0d6efd, #4dabf7);
+  transition: width 0.4s ease-in-out;
+}
+
+.progress-wrapper small {
+  font-size: 0.85rem;
+  letter-spacing: 0.5px;
+}
+
+/* Card Styling */
+.card {
+  border-radius: 1rem;
+  border: none;
+  box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.card h2 {
+  font-size: 1.25rem;
+  color: #212529;
+  margin-bottom: 1rem;
+}
+
+/* Form Controls */
+.form-label {
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+  color: #495057;
+}
+
+.form-control,
+.form-select,
+textarea {
+  border-radius: 0.5rem;
+  border: 1px solid #ced4da;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.95rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form-control:focus,
+.form-select:focus,
+textarea:focus {
+  border-color: #0d6efd;
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15);
+}
+
+/* Buttons */
+.btn {
+  padding: 0.55rem 1.25rem;
+  font-size: 0.95rem;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease-in-out;
+}
+
+.btn-primary {
+  background: linear-gradient(90deg, #0d6efd, #4dabf7);
+  border: none;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(90deg, #0b5ed7, #339af0);
+}
+
+.btn-outline-secondary {
+  border: 1px solid #adb5bd;
+  color: #495057;
+}
+
+.btn-outline-secondary:hover {
+  background: #f8f9fa;
+  color: #212529;
+}
+
+/* Confirmation Receipt */
+.alert-success {
+  background: #f8fff8;
+  border: 1px solid #d3f9d8;
+  box-shadow: 0px 3px 10px rgba(40, 167, 69, 0.1);
+}
+
+.alert-success h5 {
+  font-size: 1.2rem;
+  margin-bottom: 1rem;
+  color: #198754;
+}
+
+.alert-success p {
+  margin-bottom: 0.4rem;
+  font-size: 0.95rem;
+}
+
+.alert-success h5 span {
+  font-size: 1.3rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .progress-wrapper {
+    max-width: 100%;
+    padding: 0 1rem;
+  }
+
+  h2 {
+    font-size: 1.25rem;
+  }
+
+  .btn {
+    width: 100%;
+    margin-bottom: 0.5rem;
+  }
+
+  .d-flex.gap-2 {
+    flex-direction: column;
+  }
+}
