@@ -438,7 +438,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
 
                     <hr>
-                    <button type="submit" name="cancel" class="btn btn-secondary px-4 me-2">Cancel</button>
+                    <button type="submit" name="cancel" class="btn btn-secondary px-4 me-2" formnovalidate>Cancel</button>
                     <button type="submit" name="submit" class="btn btn-danger px-4">Submit Booking Request</button>
                 </div>
                 </form>
