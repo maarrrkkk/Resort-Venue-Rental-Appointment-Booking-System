@@ -1,15 +1,32 @@
 # Resort Venue Booking System
 
-A web application for booking resort venues built with PHP, MySQL, HTML, CSS, and JavaScript.
+A comprehensive web application for booking resort venues built with PHP, MySQL, HTML, CSS, and JavaScript.
 
 ## Features
 
-- User registration and authentication
-- Forgot password functionality with email reset links
-- Venue browsing and booking
-- Admin panel for managing venues and bookings
-- AJAX API for real-time interactions
-- Email notifications for inquiries and password resets
+### User Features
+- **User Registration & Authentication**: Secure signup/login with email verification
+- **Forgot Password**: Password reset via email with secure token-based links
+- **Venue Browsing**: Interactive venue catalog with images, amenities, and pricing
+- **Multi-Step Booking Process**: Guided 4-step booking flow with real-time validation
+- **GCash Payment Integration**: Upload payment receipts for booking confirmation
+- **User Dashboard**: View booking history and manage profile
+- **Email Notifications**: Automated emails for inquiries and password resets
+
+### Admin Features
+- **Admin Dashboard**: Comprehensive overview with statistics and recent bookings
+- **Venue Management**: Add, edit, and manage venue listings with images and QR codes
+- **Booking Management**: View, update, and manage booking statuses
+- **User Management**: Administer user accounts and roles
+- **GCash Receipt Review**: View uploaded payment receipts for verification
+
+### Technical Features
+- **Environment Configuration**: Secure configuration via `.env` file
+- **AJAX API**: Real-time interactions without page reloads
+- **Responsive Design**: Mobile-friendly interface with Bootstrap
+- **File Upload System**: Secure image upload with validation
+- **Session Management**: Secure user sessions and authentication
+- **Database Auto-Setup**: Automatic database creation and seeding
 
 ## Installation
 
@@ -22,6 +39,35 @@ A web application for booking resort venues built with PHP, MySQL, HTML, CSS, an
    - If project is directly in `htdocs/`: `BASE_URL=http://localhost`
 6. Access the application via your browser (the database will be created automatically).
 7. Set up Gmail App Password for email functionality (see Email Configuration section).
+
+## Booking Process
+
+The application features a comprehensive 4-step booking process:
+
+1. **Step 1: Select Venue & Date**
+   - Browse available venues with images and details
+   - Select event date
+   - Real-time venue preview
+
+2. **Step 2: Event Details**
+   - Choose event type (Wedding, Birthday, Conference, etc.)
+   - Specify number of guests
+   - Add special requests
+
+3. **Step 3: Confirmation**
+   - Review all booking details
+   - Calculate total cost (venue + extra guests)
+   - Confirm booking details
+
+4. **Step 4: Payment**
+   - View venue's GCash QR code
+   - Upload payment receipt screenshot
+   - Submit booking for admin approval
+
+## User Roles
+
+- **Client**: Can browse venues, make bookings, upload payments, view booking history
+- **Admin**: Can manage venues, view all bookings, update booking statuses, manage users
 
 ## Environment Configuration
 
@@ -109,19 +155,70 @@ SMTP_ENCRYPTION=tls
 - You can generate separate app passwords for different purposes if needed
 - The application automatically uses these settings for both inquiry emails and password reset emails
 
+## Database Schema
+
+The application uses MySQL with the following main tables:
+
+- **users**: User accounts with authentication and profile data
+- **venues**: Venue listings with images, amenities, and pricing
+- **bookings**: Booking records with payment tracking
+- **settings**: Application configuration settings
+
+## API Endpoints
+
+### Authentication
+- `POST /api/login.php` - User login
+- `POST /api/register.php` - User registration
+- `POST /api/forgotPassword.php` - Password reset request
+- `POST /api/resetPassword.php` - Password reset confirmation
+- `POST /api/logout.php` - User logout
+
+### Venues
+- `GET /api/venues.php` - List all venues
+- `GET /api/venues.php?id={id}` - Get specific venue
+- `POST /api/venues.php` - Create/update venue (admin only)
+
+### Bookings
+- `GET /api/bookings.php` - Get user bookings
+- `PUT /api/bookings.php` - Update booking status (admin only)
+
+### Admin
+- `GET /api/dashboard.php` - Dashboard statistics
+- `GET /api/users.php` - User management
+
 ## Directory Structure
 
-- `index.php`: Homepage
-- `admin/`: Admin dashboard
-- `client/`: Client dashboard
-- `includes/`: Shared PHP files
-- `api/`: AJAX endpoints
-- `assets/`: CSS, JS, images
-- `database/`: SQL schema
+- `index.php`: Main application router
+- `admin/`: Admin dashboard and management pages
+- `api/`: RESTful API endpoints
+- `assets/`: Static files (CSS, JS, images, uploads)
+- `config/`: Database and application configuration
+- `includes/`: Shared PHP utilities and templates
+- `lib/`: Third-party libraries (PHPMailer)
+- `pages/`: Frontend pages (home, login, booking, etc.)
 
 ## Technologies Used
 
-- PHP
-- MySQL
-- HTML/CSS/JavaScript
-- Bootstrap (placeholder)
+### Backend
+- **PHP 7.4+**: Server-side scripting and API development
+- **MySQL**: Database management with PDO
+- **PHPMailer**: Email sending functionality
+- **Sessions**: User authentication and session management
+
+### Frontend
+- **HTML5/CSS3**: Semantic markup and responsive styling
+- **JavaScript (ES6+)**: Dynamic interactions and AJAX calls
+- **Bootstrap 5**: Responsive UI components and styling
+- **Font Awesome**: Icons and visual elements
+
+### Development Tools
+- **Environment Configuration**: `.env` file for secure configuration
+- **AJAX API**: RESTful endpoints for real-time interactions
+- **File Upload System**: Secure image handling with validation
+- **Form Validation**: Client and server-side validation
+
+### Security Features
+- **Password Hashing**: bcrypt for secure password storage
+- **CSRF Protection**: Session-based request validation
+- **Input Sanitization**: XSS prevention and SQL injection protection
+- **File Upload Security**: Type validation and secure file handling
