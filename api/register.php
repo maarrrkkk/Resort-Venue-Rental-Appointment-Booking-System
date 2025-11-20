@@ -15,10 +15,22 @@ $name = trim($data['name'] ?? '');
 $email = trim($data['email'] ?? '');
 $phone = trim($data['phone'] ?? '');
 $password = trim($data['password'] ?? '');
+$confirmPassword = trim($data['confirmPassword'] ?? '');
 
 // Basic validation
-if (!$name || !$email || !$phone || !$password) {
+if (!$name || !$email || !$phone || !$password || !$confirmPassword) {
     echo json_encode(["success" => false, "message" => "All fields are required"]);
+    exit;
+}
+
+// Password validation
+if ($password !== $confirmPassword) {
+    echo json_encode(["success" => false, "message" => "Passwords do not match"]);
+    exit;
+}
+
+if (!preg_match('/^(?=.*[A-Z])[A-Za-z0-9]{11,}$/', $password)) {
+    echo json_encode(["success" => false, "message" => "Password must be at least 11 characters, include at least 1 uppercase letter, and contain only letters and numbers"]);
     exit;
 }
 
@@ -56,15 +68,21 @@ try {
 
     try {
         $mail->isSMTP();
-        $mail->Host = 'smtp.gmail.com';
+        $mail->Host = env('SMTP_HOST', 'smtp.gmail.com');
         $mail->SMTPAuth = true;
-        $mail->Username = 'johnmarkaguilar405@gmail.com';
-        $mail->Password = 'zogj dumt hkci uahm';
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-        $mail->Port = 587;
+        $mail->Username = env('SMTP_USERNAME');
+        $mail->Password = env('SMTP_PASSWORD');
+        $encryption = env('SMTP_ENCRYPTION', 'tls');
+        if ($encryption === 'tls') {
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        } elseif ($encryption === 'ssl') {
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
+        }
+        $mail->Port = env('SMTP_PORT', 587);
 
-        $mail->setFrom('johnmarkaguilar405@gmail.com', 'Paradise Resort');
-        $mail->addReplyTo('johnmarkaguilar405@gmail.com', 'Paradise Resort');
+        $fromEmail = env('SMTP_USERNAME');
+        $mail->setFrom($fromEmail, 'Paradise Resort');
+        $mail->addReplyTo($fromEmail, 'Paradise Resort');
         $mail->addAddress($email, $name);
 
         $mail->isHTML(false);
@@ -79,9 +97,10 @@ try {
             "step" => "verify"
         ]);
     } catch (Exception $e) {
+        error_log("Email sending failed: " . $mail->ErrorInfo);
         echo json_encode([
             "success" => false,
-            "message" => "Failed to send verification email. Please try again."
+            "message" => "Failed to send verification email: " . $mail->ErrorInfo
         ]);
     }
 } catch (PDOException $e) {

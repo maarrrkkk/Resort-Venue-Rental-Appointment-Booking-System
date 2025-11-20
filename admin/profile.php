@@ -13,6 +13,7 @@
                     <p><strong>Phone:</strong> <span id="adminPhone"></span></p>
                     <p><strong>Role:</strong> <span id="adminRole"></span></p>
                     <button class="btn btn-primary" onclick="editAdminProfile()">Edit Profile</button>
+                    <button class="btn btn-warning ms-2" onclick="changePassword()">Change Password</button>
                 </div>
             </div>
         </div>
@@ -27,6 +28,38 @@
                     <p><strong>Total Bookings:</strong> <span id="totalBookings"></span></p>
                     <p><strong>Total Revenue:</strong> ₱<span id="totalRevenue"></span></p>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Change Password Modal -->
+<div class="modal fade" id="changePasswordModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Change Password</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="changePasswordForm">
+                    <div class="mb-3">
+                        <label>Current Password</label>
+                        <input type="password" class="form-control" id="currentPassword" required>
+                    </div>
+                    <div class="mb-3">
+                        <label>New Password</label>
+                        <input type="password" class="form-control" id="newPassword" required minlength="6">
+                    </div>
+                    <div class="mb-3">
+                        <label>Confirm New Password</label>
+                        <input type="password" class="form-control" id="confirmNewPassword" required minlength="6">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-warning" onclick="updatePassword()">Update Password</button>
             </div>
         </div>
     </div>

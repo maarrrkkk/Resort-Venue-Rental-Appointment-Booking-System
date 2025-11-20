@@ -965,6 +965,67 @@ function editAdminProfile() {
     new bootstrap.Modal(document.getElementById('adminProfileModal')).show();
 }
 
+function changePassword() {
+    // Reset form
+    document.getElementById('changePasswordForm').reset();
+    new bootstrap.Modal(document.getElementById('changePasswordModal')).show();
+}
+
+async function updatePassword() {
+    const currentPassword = document.getElementById('currentPassword').value;
+    const newPassword = document.getElementById('newPassword').value;
+    const confirmPassword = document.getElementById('confirmNewPassword').value;
+
+    // Validation
+    if (!currentPassword || !newPassword || !confirmPassword) {
+        window.authManager.showAlert('All password fields are required.', 'danger');
+        return;
+    }
+
+    if (newPassword !== confirmPassword) {
+        window.authManager.showAlert('New passwords do not match.', 'danger');
+        return;
+    }
+
+    if (newPassword.length < 6) {
+        window.authManager.showAlert('New password must be at least 6 characters.', 'danger');
+        return;
+    }
+
+    if (currentPassword === newPassword) {
+        window.authManager.showAlert('New password must be different from current password.', 'danger');
+        return;
+    }
+
+    const user = window.authManager.getCurrentUser();
+    const data = {
+        id: user.id,
+        currentPassword: currentPassword,
+        newPassword: newPassword
+    };
+
+    try {
+        const response = await fetch(window.authManager.baseURL + 'changePassword.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+            credentials: 'same-origin'
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            bootstrap.Modal.getInstance(document.getElementById('changePasswordModal')).hide();
+            window.authManager.showAlert('Password updated successfully.', 'success');
+        } else {
+            window.authManager.showAlert(result.message || 'Failed to update password.', 'danger');
+        }
+    } catch (error) {
+        console.error('Error updating password:', error);
+        window.authManager.showAlert('Connection error. Please try again.', 'danger');
+    }
+}
+
 async function saveAdminProfile() {
     const form = document.getElementById('adminProfileForm');
     if (!form.checkValidity()) {
