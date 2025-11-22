@@ -19,19 +19,28 @@ try {
     $stmt->execute(['email' => $email]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if ($user && password_verify($password, $user['password_hash'])) {
-        // Remove sensitive info
-        unset($user['password_hash']);
+    if ($user) {
+        if (!$user['email_verified']) {
+            echo json_encode(["success" => false, "message" => "Please verify your email before logging in."]);
+            exit;
+        }
 
-        // Set session for server-side auth
-        $_SESSION['user'] = $user;
-        $_SESSION['user_id'] = $user['id'];
+        if (password_verify($password, $user['password_hash'])) {
+            // Remove sensitive info
+            unset($user['password_hash']);
 
-        echo json_encode([
-            "success" => true,
-            "message" => "Login successful",
-            "user" => $user
-        ]);
+            // Set session for server-side auth
+            $_SESSION['user'] = $user;
+            $_SESSION['user_id'] = $user['id'];
+
+            echo json_encode([
+                "success" => true,
+                "message" => "Login successful",
+                "user" => $user
+            ]);
+        } else {
+            echo json_encode(["success" => false, "message" => "Invalid email or password"]);
+        }
     } else {
         echo json_encode(["success" => false, "message" => "Invalid email or password"]);
     }
