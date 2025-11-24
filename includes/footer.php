@@ -32,9 +32,9 @@
                          alt="GCash" 
                          style="height: 70px;">
 
-                    <img src="assets/images/payments/paymaya.png" 
+                    <img src="assets/images/payments/paypal.png" 
                          alt="PayMaya" 
-                         style="height: 70px;">
+                         style="height: 50px">
 
                     <img src="assets/images/payments/mastercard.png" 
                          alt="MasterCard" 
