@@ -30,8 +30,8 @@ try {
     $passwordHash = password_hash($pending['password'], PASSWORD_BCRYPT);
 
     // Insert user
-    $stmt = $pdo->prepare("INSERT INTO users (id, name, email, phone, password_hash, role, email_verified)
-                           VALUES (:id, :name, :email, :phone, :password_hash, 'client', TRUE)");
+    $stmt = $pdo->prepare("INSERT INTO users (id, name, email, phone, password_hash, role, email_verified, created_at, updated_at)
+                           VALUES (:id, :name, :email, :phone, :password_hash, 'client', TRUE, NOW(), NOW())");
     $stmt->execute([
         'id' => $userId,
         'name' => $pending['name'],

@@ -1,3 +1,6 @@
+<?php
+$user = $_SESSION['user'] ?? null;
+?>
 <div class="profile-container min-vh-100 d-flex align-items-center justify-content-center">
     <div class="container">
         <h1 class="mb-4">My Profile</h1>
@@ -9,10 +12,10 @@
                         <h5>Account Information</h5>
                     </div>
                     <div class="card-body">
-                        <p><strong>Name:</strong> <span id="userName"></span></p>
-                        <p><strong>Email:</strong> <span id="userEmail"></span></p>
-                        <p><strong>Phone:</strong> <span id="userPhone"></span></p>
-                        <p><strong>Role:</strong> <span id="userRole"></span></p>
+                        <p><strong>Name:</strong> <span id="userName"><?php echo htmlspecialchars($user['name'] ?? ''); ?></span></p>
+                        <p><strong>Email:</strong> <span id="userEmail"><?php echo htmlspecialchars($user['email'] ?? ''); ?></span></p>
+                        <p><strong>Phone:</strong> <span id="userPhone"><?php echo htmlspecialchars($user['phone'] ?? ''); ?></span></p>
+                        <p><strong>Role:</strong> <span id="userRole"><?php echo htmlspecialchars($user['role'] ?? ''); ?></span></p>
                         <button class="btn btn-primary" onclick="editProfile()">Edit Profile</button>
                         <button class="btn btn-warning ms-2" onclick="changePassword()">Change Password</button>
                     </div>

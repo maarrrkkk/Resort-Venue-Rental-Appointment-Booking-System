@@ -9,7 +9,7 @@ class VenueManager {
 
     async loadVenues() {
         try {
-            const response = await fetch('api/venues.php');
+            const response = await fetch(window.authManager.baseURL + 'venues.php');
             this.venues = await response.json();
             this.filteredVenues = [...this.venues];
         } catch (error) {
@@ -147,12 +147,12 @@ class VenueManager {
                         </div>
                         
                         <div class="mt-auto">
-                            <div class="d-flex justify-content-between align-items-center border-top pt-3">
+                            <div class="d-flex gap-7 justify-content-between align-items-center border-top pt-3">
                                 <div>
                                     <small class="text-muted">Starting from</small>
                                     <div class="h5 mb-0">₱${venue.price.toLocaleString()}</div>
                                 </div>
-                                <button class="btn btn-danger venue-select-btn" 
+                                <button class="btn btn-danger ms-5 venue-select-btn" 
                                         data-venue-id="${venue.id}" 
                                         ${!venue.availability ? 'disabled' : ''}>
                                     ${venue.availability ? 'Book This Venue' : 'Unavailable'}

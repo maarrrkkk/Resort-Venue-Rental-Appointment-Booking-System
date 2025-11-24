@@ -54,7 +54,7 @@
                                 </div>
                             </div>
                         </div>
-                        
+
                         <!-- Status Update Modal -->
                         <div class="modal fade" id="statusModal" tabindex="-1" aria-labelledby="statusModalTitle" aria-hidden="true">
                             <div class="modal-dialog">
@@ -112,25 +112,12 @@
                     <h6 class="m-0 font-weight-bold text-primary">Recent Bookings</h6>
                 </div>
                 <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-bordered" width="100%" cellspacing="0">
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>User</th>
-                                    <th>Venue</th>
-                                    <th>Amount</th>
-                                    <th>GCash Receipt</th>
-                                    <th>Status</th>
-                                    <th>Date</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="recentBookingsTable">
-                                <tr><td colspan="8" class="text-center">Loading...</td></tr>
-                            </tbody>
-                        </table>
+
+                    <!-- CARD CONTAINER -->
+                    <div id="recentBookingsContainer">
+                        <div class="text-center py-3">Loading...</div>
                     </div>
+
                 </div>
             </div>
         </div>

@@ -25,7 +25,7 @@ $user = $_SESSION['user'] ?? null;
         </a>
     </div>
     <nav class="admin-nav">
-        <ul class="nav-menu">
+        <ul class="nav-menu p-4">
             <li><a href="index.php?page=dashboard" class="<?= ($_GET['page'] ?? '') === 'dashboard' ? 'active' : '' ?>"><i class="fa fa-home"></i> Dashboard</a></li>
             <li><a href="index.php?page=venues" class="<?= ($_GET['page'] ?? '') === 'venues' ? 'active' : '' ?>"><i class="fa fa-map-marker-alt"></i> Venues</a></li>
             <li><a href="index.php?page=users" class="<?= ($_GET['page'] ?? '') === 'users' ? 'active' : '' ?>"><i class="fa fa-users"></i> Users</a></li>

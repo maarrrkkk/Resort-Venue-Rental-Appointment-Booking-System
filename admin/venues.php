@@ -12,23 +12,8 @@
                         </button>
                     </div>
 
-                    <div class="table-responsive">
-                        <table class="table table-striped table-hover">
-                            <thead class="table-dark">
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Name</th>
-                                    <th>Category</th>
-                                    <th>Capacity</th>
-                                    <th>Price</th>
-                                    <th>Status</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="venuesTable">
-                                <tr><td colspan="7" class="text-center">Loading...</td></tr>
-                            </tbody>
-                        </table>
+                    <div id="venuesContainer" class="row">
+                        <div class="col-12 text-center py-3">Loading...</div>
                     </div>
                 </div>
             </div>

@@ -22,7 +22,7 @@
 /* Hero Section */
 .hero-section {
   min-height: 90vh;
-  background: url('https://images.unsplash.com/photo-1625600879300-d59b96290d03?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxsdXh1cnklMjByZXNvcnQlMjB2ZW51ZSUyMG91dGRvb3J8ZW58MXx8fHwxNzU5MTIxNjI2fDA&ixlib=rb-4.1.0&q=80&w=1920') no-repeat center center/cover;
+    background: url('../images/gallery/photo-1625600879300-d59b96290d03.jpeg') no-repeat center center/cover;
   position: relative;
   overflow: hidden;
   color: #fff; /* ensures text is visible */
@@ -216,6 +216,31 @@ body.loaded .animate-fadeIn.delay-2s {
 }
 
 /* Venue Selection */
+.venues-bg {
+  background: url('../images/gallery/photo-1625600879300-d59b96290d03.jpeg')
+              no-repeat center center/cover;
+  position: relative;
+  overflow: hidden;
+}
+
+.venues-bg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+      rgba(3, 2, 19, 0.6) 0%,
+      rgba(3, 2, 19, 0.5) 50%,
+      rgba(3, 2, 19, 0.7) 100%
+  );
+  z-index: 1; /* gradient layer */
+}
+
+/* make content appear ON TOP of gradient */
+.venues-bg > * {
+  position: relative;
+  z-index: 2;
+}
+
 .venue-option {
   border: 2px solid transparent;
   cursor: pointer;
@@ -383,10 +408,6 @@ body.loaded .animate-fadeIn.delay-2s {
   color: var(--primary-color) !important;
 }
 
-.bg-primary {
-  background-color: var(--primary-color) !important;
-}
-
 .border-primary {
   border-color: var(--primary-color) !important;
 }
@@ -450,7 +471,6 @@ body.loaded .animate-fadeIn.delay-2s {
 /* Headings */
 h2 {
   font-size: 1.5rem;
-  color: #0d6efd;
   border-bottom: 2px solid #e9ecef;
   padding-bottom: 0.5rem;
   margin-bottom: 1.5rem;

@@ -89,13 +89,32 @@
 
             <!-- Image (landscape-fixed wrapper) -->
             <div class="col-lg-6">
-                <div class="image-wrapper">
-                    <img src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080"
-                        alt="Philippine venue"
-                        class="img-fluid rounded-3"
-                        onerror="this.onerror=null; this.src='assets/images/no-image.png';">
+                <div class="image-wrapper position-relative">
+                    <img class="about-slide active"
+                        src="assets/images/gallery/photo-1505409859467-3a796fd5798e.avif"
+                        alt="Philippine venue">
+
+                    <img class="about-slide"
+                        src="assets/images/gallery/photo-1509600110300-21b9d5fedeb7.avif"
+                        alt="Venue 2">
+
+                    <img class="about-slide"
+                        src="assets/images/gallery/premium_photo-1681922761648-d5e2c3972982.avif"
+                        alt="Venue 3">
                 </div>
             </div>
+            <script>
+                document.addEventListener("DOMContentLoaded", () => {
+                    const slides = document.querySelectorAll(".about-slide");
+                    let index = 0;
+
+                    setInterval(() => {
+                        slides[index].classList.remove("active");
+                        index = (index + 1) % slides.length;
+                        slides[index].classList.add("active");
+                    }, 2000); // 2 seconds
+                });
+            </script>
         </div>
     </div>
 </section>
