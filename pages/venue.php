@@ -1,12 +1,14 @@
 <!-- Page Header -->
-<section class="py-5 bg-primary text-white">
+<section class="py-5 venues-bg text-white">
     <div class="container text-center">
         <h1 class="display-4 mb-3">Venues</h1>
         <p class="lead">
-            Choose from our collection of stunning venues from diffrent places, each designed to create unforgettable experiences
+            Choose from our collection of stunning venues from diffrent places, 
+            each designed to create unforgettable experiences
         </p>
     </div>
 </section>
+
 
 <!-- Category Filter -->
 <section class="py-4 bg-light">
@@ -77,20 +79,6 @@
                     Venues suitable for intimate gatherings to large celebrations
                 </p>
             </div>
-        </div>
-    </div>
-</section>
-
-<!-- CTA Section -->
-<section class="py-5 bg-primary text-white">
-    <div class="container text-center">
-        <h2 class="mb-3">Ready to Book Your Perfect Venue?</h2>
-        <p class="lead mb-4">
-            Our team is ready to help you create an unforgettable experience
-        </p>
-        <div class="d-flex flex-column flex-sm-row gap-3 justify-content-center">
-            <a href="booking.html" class="btn btn-light btn-lg">Start Booking</a>
-            <a href="index.html#contact" class="btn btn-outline-light btn-lg">Contact Us</a>
         </div>
     </div>
 </section>

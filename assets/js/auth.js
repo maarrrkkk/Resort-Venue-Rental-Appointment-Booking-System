@@ -1,8 +1,8 @@
 // assets/js/auth.js
 class AuthManager {
     constructor() {
-        // Use relative API path depending on whether we're in /admin/
-        this.baseURL = window.location.pathname.includes('/admin/') ? '../api/' : 'api/';
+        // Use absolute API path
+        this.baseURL = '/Github/resort-venue-rental-appointment-booking-system/api/';
         this.init();
     }
 
@@ -401,30 +401,35 @@ class AuthManager {
             document.getElementById('totalBookings').textContent = data.totalBookings ?? 0;
             document.getElementById('totalRevenue').textContent = '₱' + parseFloat(data.totalRevenue ?? 0).toFixed(2);
 
-            const tbody = document.getElementById('recentBookingsTable');
-            if (!tbody) return;
+            const container = document.getElementById('recentBookingsContainer');
+            if (!container) return;
             if (Array.isArray(data.recentBookings) && data.recentBookings.length > 0) {
-                tbody.innerHTML = data.recentBookings.map(b => `
-                    <tr>
-                        <td>${b.id}</td>
-                        <td>${this.escapeHtml(b.user_name)}</td>
-                        <td>${this.escapeHtml(b.venue_name)}</td>
-                        <td>₱${parseFloat(b.amount ?? 0).toFixed(2)}</td>
-                        <td>${b.gcash_receipt ? `<a href="${b.gcash_receipt}" target="_blank"><img src="${b.gcash_receipt}" alt="GCash Receipt" style="max-width: 100px; max-height: 100px;" class="img-thumbnail"></a>` : 'No receipt'}</td>
-                        <td><span class="badge ${this.getStatusBadgeClass(b.status ?? 'pending')}">${this.capitalize(b.status ?? 'pending')}</span></td>
-                        <td>${this.formatDate(b.created_at ?? '')}</td>
-                        <td>
+                container.innerHTML = data.recentBookings.map(b => `
+                    <div class="card mb-3 shadow-sm">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <span>Booking #${b.id}</span>
+                            <span class="badge ${this.getStatusBadgeClass(b.status ?? 'pending')}">${this.capitalize(b.status ?? 'pending')}</span>
+                        </div>
+                        <div class="card-body">
+                            <p><strong>User:</strong> ${this.escapeHtml(b.user_name)}</p>
+                            <p><strong>Venue:</strong> ${this.escapeHtml(b.venue_name)}</p>
+                            <p><strong>Amount:</strong> ₱${parseFloat(b.amount ?? 0).toFixed(2)}</p>
+                            <p><strong>Payment:</strong> ${b.payment_type || 'N/A'}</p>
+                            <p><strong>Receipt:</strong> ${b.gcash_receipt ? `<a href="${b.gcash_receipt}" target="_blank"><img src="${b.gcash_receipt}" alt="GCash Receipt" style="max-width: 100px; max-height: 100px;" class="img-thumbnail"></a>` : 'No receipt'}</p>
+                            <p><strong>Date:</strong> ${this.formatDate(b.created_at ?? '')}</p>
+                        </div>
+                        <div class="card-footer">
                             <button class="btn btn-sm btn-outline-primary me-1" onclick="updateStatus('${b.id}', '${b.status || 'pending'}')" title="Edit Status">
                                 <i class="fas fa-edit"></i> Edit
                             </button>
                             <button class="btn btn-sm btn-outline-danger" onclick="deleteBooking('${b.id}')" title="Delete Booking">
                                 <i class="fas fa-trash"></i> Delete
                             </button>
-                        </td>
-                    </tr>
+                        </div>
+                    </div>
                 `).join('');
             } else {
-                tbody.innerHTML = '<tr><td colspan="8" class="text-center">No recent bookings.</td></tr>';
+                container.innerHTML = '<div class="text-center py-3">No recent bookings.</div>';
             }
 
         } catch (err) {
@@ -466,7 +471,7 @@ function updateBookingStatus() {
     const id = document.getElementById('bookingId').value;
     const status = document.getElementById('bookingStatus').value;
 
-    fetch('../api/bookings.php', {
+    fetch(window.authManager.baseURL + 'bookings.php', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, status })
@@ -496,7 +501,7 @@ function deleteBooking(id) {
         return;
     }
 
-    fetch(`../api/bookings.php?id=${id}`, {
+    fetch(window.authManager.baseURL + `bookings.php?id=${id}`, {
         method: 'DELETE'
     })
     .then(response => response.json())
@@ -520,9 +525,9 @@ function deleteBooking(id) {
 
 // Admin functions
 document.addEventListener('DOMContentLoaded', function() {
-    if (document.getElementById('venuesTable')) {
+    if (document.getElementById('venuesContainer')) {
         loadVenues();
-    } else if (document.getElementById('usersTable')) {
+    } else if (document.getElementById('usersContainer')) {
         loadUsers();
     } else if (document.getElementById('bookingsTable')) {
         loadBookings();
@@ -532,23 +537,34 @@ document.addEventListener('DOMContentLoaded', function() {
 // Venues functions
 async function loadVenues() {
     try {
-        const response = await fetch('../api/venues.php');
+        const response = await fetch(window.authManager.baseURL + 'venues.php');
         const venues = await response.json();
-        const tbody = document.getElementById('venuesTable');
-        tbody.innerHTML = venues.map(venue => `
-            <tr>
-                <td>${venue.id}</td>
-                <td>${escapeHtml(venue.name)}</td>
-                <td>${venue.category}</td>
-                <td>${venue.capacity}</td>
-                <td>₱${parseFloat(venue.price).toFixed(2)}</td>
-                <td>${venue.availability ? 'Available' : 'Unavailable'}</td>
-                <td>
-                    <button class="btn btn-sm btn-primary" onclick="editVenue('${venue.id}')">Edit</button>
-                    <button class="btn btn-sm btn-danger" onclick="deleteVenue('${venue.id}')">Delete</button>
-                </td>
-            </tr>
-        `).join('');
+        const container = document.getElementById('venuesContainer');
+        if (!container) return;
+        if (venues.length > 0) {
+            container.innerHTML = venues.map(venue => `
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">${escapeHtml(venue.name)}</h5>
+                            <span class="badge ${venue.availability ? 'bg-success' : 'bg-secondary'}">${venue.availability ? 'Available' : 'Unavailable'}</span>
+                        </div>
+                        <div class="card-body">
+                            <p><strong>ID:</strong> ${venue.id}</p>
+                            <p><strong>Category:</strong> ${venue.category}</p>
+                            <p><strong>Capacity:</strong> ${venue.capacity}</p>
+                            <p><strong>Price:</strong> ₱${parseFloat(venue.price).toFixed(2)}</p>
+                        </div>
+                        <div class="card-footer">
+                            <button class="btn btn-sm btn-primary me-1" onclick="editVenue('${venue.id}')">Edit</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteVenue('${venue.id}')">Delete</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            container.innerHTML = '<div class="col-12 text-center py-3">No venues found.</div>';
+        }
     } catch (error) {
         console.error('Error loading venues:', error);
         if (window.authManager) {
@@ -581,7 +597,7 @@ function addAmenity() {
 }
 
 function editVenue(id) {
-    fetch(`../api/venues.php?id=${id}`)
+    fetch(window.authManager.baseURL + `venues.php?id=${id}`)
         .then(response => response.json())
         .then(venue => {
             document.getElementById('venueId').value = venue.id;
@@ -675,7 +691,7 @@ async function saveVenue() {
     }
 
     try {
-        const response = await fetch('../api/venues.php', {
+        const response = await fetch(window.authManager.baseURL + 'venues.php', {
             method: 'POST',
             body: formData
         });
@@ -701,7 +717,7 @@ async function deleteVenue(id) {
     if (!confirm('Are you sure you want to delete this venue?')) return;
 
     try {
-        const response = await fetch(`../api/venues.php?id=${id}`, { method: 'DELETE' });
+        const response = await fetch(window.authManager.baseURL + `venues.php?id=${id}`, { method: 'DELETE' });
         const result = await response.json();
         if (result.success) {
             loadVenues();
@@ -722,22 +738,33 @@ async function deleteVenue(id) {
 // Users functions
 async function loadUsers() {
     try {
-        const response = await fetch('../api/users.php');
+        const response = await fetch(window.authManager.baseURL + 'users.php');
         const users = await response.json();
-        const tbody = document.getElementById('usersTable');
-        tbody.innerHTML = users.map(user => `
-            <tr>
-                <td>${user.id}</td>
-                <td>${escapeHtml(user.name)}</td>
-                <td>${escapeHtml(user.email)}</td>
-                <td>${escapeHtml(user.phone)}</td>
-                <td>${capitalize(user.role)}</td>
-                <td>
-                    <button class="btn btn-sm btn-primary" onclick="editUser('${user.id}')">Edit</button>
-                    <button class="btn btn-sm btn-danger" onclick="deleteUser('${user.id}')">Delete</button>
-                </td>
-            </tr>
-        `).join('');
+        const container = document.getElementById('usersContainer');
+        if (!container) return;
+        if (users.length > 0) {
+            container.innerHTML = users.map(user => `
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">${escapeHtml(user.name)}</h5>
+                            <span class="badge ${user.role === 'admin' ? 'bg-danger' : 'bg-info'}">${capitalize(user.role)}</span>
+                        </div>
+                        <div class="card-body">
+                            <p><strong>ID:</strong> ${user.id}</p>
+                            <p><strong>Email:</strong> ${escapeHtml(user.email)}</p>
+                            <p><strong>Phone:</strong> ${escapeHtml(user.phone)}</p>
+                        </div>
+                        <div class="card-footer">
+                            <button class="btn btn-sm btn-primary me-1" onclick="editUser('${user.id}')">Edit</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteUser('${user.id}')">Delete</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            container.innerHTML = '<div class="col-12 text-center py-3">No users found.</div>';
+        }
     } catch (error) {
         console.error('Error loading users:', error);
         if (window.authManager) {
@@ -756,7 +783,7 @@ function showAddUserModal() {
 }
 
 function editUser(id) {
-    fetch(`../api/users.php?id=${id}`)
+    fetch(window.authManager.baseURL + `users.php?id=${id}`)
         .then(response => response.json())
         .then(user => {
             document.getElementById('userId').value = user.id;
@@ -790,7 +817,7 @@ async function saveUser() {
 
     try {
         const method = data.id ? 'PUT' : 'POST';
-        const response = await fetch('../api/users.php', {
+        const response = await fetch(window.authManager.baseURL + 'users.php', {
             method,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
@@ -817,7 +844,7 @@ async function deleteUser(id) {
     if (!confirm('Are you sure you want to delete this user?')) return;
 
     try {
-        const response = await fetch(`../api/users.php?id=${id}`, { method: 'DELETE' });
+        const response = await fetch(window.authManager.baseURL + `users.php?id=${id}`, { method: 'DELETE' });
         const result = await response.json();
         if (result.success) {
             loadUsers();
@@ -852,27 +879,48 @@ async function loadUserProfile() {
     const user = window.authManager.getCurrentUser();
     if (!user) return;
 
-    document.getElementById('userName').textContent = user.name;
-    document.getElementById('userEmail').textContent = user.email;
-    document.getElementById('userPhone').textContent = user.phone;
-    document.getElementById('userRole').textContent = user.role;
+    console.log('Loading user profile for user:', user.name);
+
+    const userNameEl = document.getElementById('userName');
+    const userEmailEl = document.getElementById('userEmail');
+    const userPhoneEl = document.getElementById('userPhone');
+    const userRoleEl = document.getElementById('userRole');
+
+    console.log('Profile elements found:', {
+        userName: !!userNameEl,
+        userEmail: !!userEmailEl,
+        userPhone: !!userPhoneEl,
+        userRole: !!userRoleEl
+    });
+
+    if (userNameEl) userNameEl.textContent = user.name;
+    if (userEmailEl) userEmailEl.textContent = user.email;
+    if (userPhoneEl) userPhoneEl.textContent = user.phone;
+    if (userRoleEl) userRoleEl.textContent = user.role;
 
     // Load user bookings
     try {
-        const response = await fetch('api/bookings.php?user_id=' + user.id);
+        const response = await fetch(window.authManager.baseURL + 'bookings.php?user_id=' + user.id);
         const bookings = await response.json();
         const container = document.getElementById('userBookings');
-        if (bookings.length > 0) {
-            container.innerHTML = '<ul class="list-group">' +
-                bookings.map(b => `<li class="list-group-item">
-                    <strong>${b.venue_name}</strong> - ${b.booking_date} - ₱${b.amount} - <span class="badge bg-${getStatusColor(b.status)}">${b.status}</span>
-                </li>`).join('') + '</ul>';
-        } else {
-            container.innerHTML = '<p>No bookings found.</p>';
+        console.log('userBookings container found:', !!container);
+
+        if (container) {
+            if (bookings.length > 0) {
+                container.innerHTML = '<ul class="list-group">' +
+                    bookings.map(b => `<li class="list-group-item">
+                        <strong>${b.venue_name}</strong> - ${b.booking_date} - ₱${b.amount} - <span class="badge bg-${getStatusColor(b.status)}">${b.status}</span>
+                    </li>`).join('') + '</ul>';
+            } else {
+                container.innerHTML = '<p>No bookings found.</p>';
+            }
         }
     } catch (error) {
         console.error('Error loading user bookings:', error);
-        document.getElementById('userBookings').innerHTML = '<p>Error loading bookings.</p>';
+        const errorContainer = document.getElementById('userBookings');
+        if (errorContainer) {
+            errorContainer.innerHTML = '<p>Error loading bookings.</p>';
+        }
     }
 }
 
@@ -900,7 +948,7 @@ async function saveProfile() {
     };
 
     try {
-        const response = await fetch('api/users.php', {
+        const response = await fetch(window.authManager.baseURL + 'users.php', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
@@ -946,7 +994,7 @@ async function loadAdminProfile() {
 
     // Load quick stats
     try {
-        const response = await fetch('../api/dashboard.php');
+        const response = await fetch(window.authManager.baseURL + 'dashboard.php');
         const data = await response.json();
         document.getElementById('totalUsers').textContent = data.totalUsers;
         document.getElementById('totalVenues').textContent = data.totalVenues;
@@ -1042,7 +1090,7 @@ async function saveAdminProfile() {
     };
 
     try {
-        const response = await fetch('../api/users.php', {
+        const response = await fetch(window.authManager.baseURL + 'users.php', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
@@ -1079,10 +1127,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Admin functions
 document.addEventListener('DOMContentLoaded', function() {
-    if (document.getElementById('venuesTable')) {
+    if (document.getElementById('venuesContainer')) {
         loadVenues();
-    } else if (document.getElementById('usersTable')) {
+    } else if (document.getElementById('usersContainer')) {
         loadUsers();
     }
 });
+
 

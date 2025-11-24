@@ -4,6 +4,199 @@ if (!isset($_SESSION['step'])) {
     $_SESSION['step'] = 1;
 }
 
+// Helper function to process PayPal payment completion
+function processPayPalPayment($orderId, $formData, $pdo) {
+    try {
+        error_log("Processing PayPal payment for orderId: $orderId");
+
+        // If no payment details in session, try to capture the payment
+        $paymentDetails = $_SESSION['paypal_payment_details'] ?? null;
+
+        if (!$paymentDetails) {
+            error_log("No payment details in session, capturing payment for orderId: $orderId");
+
+            // PayPal API configuration
+            $clientId = env('PAYPAL_CLIENT_ID');
+            $clientSecret = env('PAYPAL_SECRET');
+            $mode = env('PAYPAL_MODE', 'sandbox');
+
+            if (empty($clientId) || empty($clientSecret)) {
+                error_log("PayPal credentials not configured");
+                header("Location: index.php?page=booking&error=config_error");
+                exit;
+            }
+
+            // PayPal API endpoints
+            $baseUrl = $mode === 'live' ? 'https://api-m.paypal.com' : 'https://api-m.sandbox.paypal.com';
+
+            // Get PayPal access token
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $baseUrl . '/v1/oauth2/token');
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, 'grant_type=client_credentials');
+            curl_setopt($ch, CURLOPT_USERPWD, $clientId . ':' . $clientSecret);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                'Accept: application/json',
+                'Accept-Language: en_US',
+                'Content-Type: application/x-www-form-urlencoded'
+            ]);
+
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+            if (curl_errno($ch)) {
+                error_log('PayPal API request failed: ' . curl_error($ch));
+                header("Location: index.php?page=booking&error=api_error");
+                exit;
+            }
+
+            curl_close($ch);
+
+            if ($httpCode !== 200) {
+                error_log('PayPal authentication failed');
+                header("Location: index.php?page=booking&error=auth_failed");
+                exit;
+            }
+
+            $authData = json_decode($response, true);
+            $accessToken = $authData['access_token'] ?? null;
+
+            if (!$accessToken) {
+                error_log('Failed to obtain PayPal access token');
+                header("Location: index.php?page=booking&error=token_error");
+                exit;
+            }
+
+            // Capture the payment
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $baseUrl . '/v2/checkout/orders/' . $orderId . '/capture');
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                'Content-Type: application/json',
+                'Authorization: Bearer ' . $accessToken,
+                'PayPal-Request-Id: ' . uniqid()
+            ]);
+
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+            if (curl_errno($ch)) {
+                error_log('PayPal payment capture failed: ' . curl_error($ch));
+                header("Location: index.php?page=booking&error=capture_error");
+                exit;
+            }
+
+            curl_close($ch);
+
+            if ($httpCode !== 201) {
+                $errorData = json_decode($response, true);
+                error_log('PayPal payment capture failed: ' . ($errorData['message'] ?? 'Unknown error'));
+                header("Location: index.php?page=booking&error=capture_failed");
+                exit;
+            }
+
+            $captureData = json_decode($response, true);
+
+            // Extract capture information
+            $purchaseUnit = $captureData['purchase_units'][0] ?? null;
+            $payment = $purchaseUnit['payments']['captures'][0] ?? null;
+
+            if (!$payment) {
+                error_log('Payment capture information not found');
+                header("Location: index.php?page=booking&error=capture_info_missing");
+                exit;
+            }
+
+            $captureID = $payment['id'];
+            $status = $payment['status'];
+            $amount = $payment['amount']['value'];
+            $currency = $payment['amount']['currency_code'];
+
+            // Verify payment status
+            if ($status !== 'COMPLETED') {
+                error_log("Payment not completed, status: $status");
+                header("Location: index.php?page=booking&error=payment_not_completed");
+                exit;
+            }
+
+            $paymentDetails = [
+                'payment_reference' => $captureID,
+                'payment_method' => 'PAYPAL',
+                'payment_status' => 'PAID',
+                'paypal_order_id' => $orderId,
+                'paypal_capture_id' => $captureID,
+                'amount' => $amount
+            ];
+
+            $_SESSION['paypal_payment_details'] = $paymentDetails;
+            error_log("Payment captured successfully: " . json_encode($paymentDetails));
+        }
+        
+        // Create booking with PayPal payment information
+        $user = $_SESSION['user'] ?? null;
+        if (!$user) {
+            header("Location: index.php?page=login");
+            exit;
+        }
+        
+        $venueId = $formData['venue_id'] ?? '';
+        $venuePrice = (int)($formData['venue_price'] ?? 0);
+        $guestCount = (int)($formData['guests'] ?? 1);
+        $pricePerGuest = 50;
+        $totalAmount = $venuePrice + ($guestCount * $pricePerGuest);
+        
+        $stmt = $pdo->prepare("
+            INSERT INTO bookings (
+                id, user_id, venue_id, booking_date, start_time, end_time, duration,
+                guest_count, event_type, special_requests, total_amount,
+                payment_reference, payment_method, payment_type, payment_status,
+                paypal_order_id, paypal_capture_id, status
+            ) VALUES (?, ?, ?, ?, '08:00:00', '17:00:00', 9, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'confirmed')
+        ");
+        
+        $bookingId = uniqid('booking_');
+        $stmt->execute([
+            $bookingId,
+            $user['id'],
+            $venueId,
+            $formData['date'] ?? '',
+            $guestCount,
+            $formData['event_type'] ?? '',
+            $formData['requests'] ?? '',
+            $totalAmount,
+            $paymentDetails['payment_reference'],
+            $paymentDetails['payment_method'],
+            'PayPal',
+            $paymentDetails['payment_status'],
+            $paymentDetails['paypal_order_id'],
+            $paymentDetails['paypal_capture_id']
+        ]);
+        
+        // Clear session data
+        unset($_SESSION['paypal_payment_details']);
+        unset($_SESSION['paypalBookingData']);
+        $_SESSION['step'] = 1;
+        unset($_SESSION['form']);
+        
+        // Show success message and redirect
+        echo "<script>
+            alert('Booking completed successfully with PayPal payment!');
+            window.location.href='index.php?page=my_bookings';
+        </script>";
+        exit;
+        
+    } catch (Exception $e) {
+        error_log("PayPal payment processing failed: " . $e->getMessage());
+        echo "<script>
+            alert('Payment completed but booking creation failed. Please contact support.');
+            window.location.href='index.php?page=booking';
+        </script>";
+        exit;
+    }
+}
+
 // ✅ Handle GET venue selection (when coming from venue.php)
 if (isset($_GET['venue_id'])) {
     $_SESSION['form']['venue_id']   = $_GET['venue_id'];
@@ -30,8 +223,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         unset($_SESSION['form']);
         header("Location: index.php?page=booking");
         exit;
-    } elseif (isset($_POST['submit'])) {
-        // Save booking to database here
+    } elseif (isset($_POST['submit_gcash'])) {
+        // Handle legacy GCash payment submission
         require_once "config/database.php";
 
         $user = $_SESSION['user'] ?? null;
@@ -91,10 +284,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $pricePerGuest = 50;
         $totalAmount = $venuePrice + ($guestCount * $pricePerGuest);
 
-        // GCash receipt path (already set above with full URL)
-        // $gcashReceiptPath is already set with the full URL if upload was successful
+        // Generate payment reference for GCash
+        $paymentReference = 'GCASH_' . uniqid();
 
-        $stmt = $pdo->prepare("INSERT INTO bookings (id, user_id, venue_id, booking_date, start_time, end_time, duration, guest_count, event_type, special_requests, total_amount, gcash_receipt, status) VALUES (?, ?, ?, ?, '08:00:00', '17:00:00', 9, ?, ?, ?, ?, ?, 'pending')");
+        $stmt = $pdo->prepare("
+            INSERT INTO bookings (
+                id, user_id, venue_id, booking_date, start_time, end_time, duration, 
+                guest_count, event_type, special_requests, total_amount, gcash_receipt,
+                payment_reference, payment_method, payment_type, payment_status, status
+            ) VALUES (?, ?, ?, ?, '08:00:00', '17:00:00', 9, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'paid', 'pending')
+        ");
         $bookingId = uniqid('booking_');
         $stmt->execute([
             $bookingId,
@@ -105,19 +304,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $currentData['event_type'] ?? '',
             $currentData['requests'] ?? '',
             $totalAmount,
-            $gcashReceiptPath
+            $gcashReceiptPath,
+            $paymentReference,
+            'GCASH',
+            'GCash'
         ]);
 
-        // ✅ Reset session for new booking
+        // Reset session for new booking
         $_SESSION['step'] = 1;
         unset($_SESSION['form']);
 
         // Show alert then redirect back to booking step 1
         echo "<script>
-            alert('Booking submitted successfully! Your booking is pending confirmation.');
+            alert('GCash payment screenshot uploaded successfully! Your booking is pending confirmation.');
             window.location.href='index.php?page=booking';
         </script>";
         exit;
+    } elseif (isset($_POST['submit'])) {
+        // Handle PayPal payment submission (backup method)
+        // This handles the case where PayPal JavaScript didn't work properly
+        processPayPalPayment('manual_submit', $formData, $pdo);
     }
 
     // Merge POST into session form data
@@ -377,18 +583,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $extraGuests = max(0, $guestCount - $venueCapacity);
             $totalCost = $venuePrice + ($extraGuests * $pricePerGuest);
+            
+            // Handle PayPal payment completion
+            if (isset($_GET['payment']) && $_GET['payment'] === 'completed') {
+                $orderId = $_GET['token'] ?? $_GET['order_id'] ?? '';
+                if ($orderId) {
+                    // Process PayPal payment completion
+                    processPayPalPayment($orderId, $formData, $pdo);
+                }
+            }
             ?>
             <h2 class="mb-4 fw-bold text-primary p-4">Step 4: Payment</h2>
             <div class="container py-5">
-                <form method="POST" enctype="multipart/form-data">
+                <form method="POST" id="paypalBookingForm">
                 <div class="alert alert-info rounded-3 p-4">
                     <h5 class="fw-bold">Complete Your Payment</h5>
-                    <p>Please scan the GCash QR code below to pay for your booking. The venue owner will confirm your booking once payment is received.</p>
-
-                    <div class="text-center my-4">
-                        <img id="gcashQrImage" src="" alt="GCash QR Code" class="img-fluid" style="max-width: 300px;">
-                        <p class="mt-3 text-muted">Scan this QR code with your GCash app</p>
-                    </div>
+                    <p>Choose your preferred payment method to complete your booking. PayPal provides secure, instant payment processing.</p>
 
                     <div class="row">
                         <div class="col-md-6">
@@ -396,79 +606,106 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <p>Venue: <strong><?= htmlspecialchars($formData['venue_name'] ?? '') ?></strong></p>
                             <p>Date: <strong><?= htmlspecialchars($formData['date'] ?? '') ?></strong></p>
                             <p>Guests: <strong><?= htmlspecialchars($formData['guests'] ?? '') ?> (Capacity: <?= $venueCapacity ?>)</strong></p>
+                            <p>Event Type: <strong><?= htmlspecialchars($formData['event_type'] ?? '') ?></strong></p>
                             <p>Venue Price: <strong>₱<?= number_format($venuePrice, 2) ?></strong></p>
                             <?php if ($extraGuests > 0): ?>
                             <p>Extra Guests: <strong>₱<?= number_format($extraGuests * $pricePerGuest, 2) ?> (<?= $extraGuests ?> × ₱50)</strong></p>
                             <?php endif; ?>
+                            <hr>
                             <p class="fs-4 fw-bold text-success">Total Amount: <strong>₱<?= number_format($totalCost, 2) ?></strong></p>
+                            
+                            <!-- Hidden form fields for PayPal integration -->
+                            <input type="hidden" name="venue_id" value="<?= htmlspecialchars($formData['venue_id'] ?? '') ?>">
+                            <input type="hidden" name="venue_price" value="<?= $venuePrice ?>">
+                            <input type="hidden" name="guests" value="<?= $guestCount ?>">
+                            <input type="hidden" name="date" value="<?= htmlspecialchars($formData['date'] ?? '') ?>">
+                            <input type="hidden" name="event_type" value="<?= htmlspecialchars($formData['event_type'] ?? '') ?>">
+                            <input type="hidden" name="requests" value="<?= htmlspecialchars($formData['requests'] ?? '') ?>">
                         </div>
                         <div class="col-md-6">
-                            <h6 class="fw-bold">Payment Instructions (GCash):</h6>
-                            <ol class="text-start">
-                                <li>
-                                    <strong>If you are using the same phone for payment:</strong><br>
-                                    - Tap and hold the QR code above, then <u>save it to your gallery</u>.<br>
-                                    - Open your GCash app, tap <strong>"Scan QR"</strong>, and choose <strong>"Upload from Gallery"</strong>.<br>
-                                    - Select the saved QR code.
-                                </li>
-                                <li>
-                                    <strong>If you are using another device (e.g., laptop + phone):</strong><br>
-                                    - Simply open your GCash app on your phone and use <strong>"Scan QR"</strong> to scan the code directly from your screen.
-                                </li>
-                                <li>Enter the exact amount: <span class="text-primary fw-bold">₱<?= number_format($totalCost, 2) ?></span></li>
-                                <li>Complete the payment securely.</li>
-                                <li>Take a screenshot of your payment receipt in GCash.</li>
-                                <li>Upload your screenshot proof of payment on this website to confirm your booking.</li>
-                            </ol>
-                            <div class="alert alert-info mt-3">
-                                <i class="bi bi-info-circle"></i>
-                                Tip: Make sure the amount is exact and the screenshot is clear before uploading.
+                            <h6 class="fw-bold">PayPal Payment</h6>
+                            <div class="alert alert-success">
+                                <i class="fab fa-paypal me-2"></i>
+                                <strong>Secure PayPal Payment</strong>
+                                <ul class="mb-0 mt-2">
+                                    <li>Pay securely with your PayPal account</li>
+                                    <li>Instant payment confirmation</li>
+                                    <li>Protected by PayPal's security</li>
+                                    <li>No need to upload screenshots</li>
+                                </ul>
+                            </div>
+                            
+                            <!-- PayPal Smart Buttons Container -->
+                            <div id="paypal-button-container" class="mt-3"></div>
+                            
+                            <!-- Alternative Payment Option (Legacy GCash) -->
+                            <div class="mt-4">
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="toggleGCashPayment()">
+                                    <i class="fas fa-qrcode me-2"></i>
+                                    Use GCash Instead
+                                </button>
+                                
+                                <div id="gcash-payment-option" style="display: none;" class="mt-3">
+                                    <p class="text-muted small">Legacy GCash payment (requires manual screenshot upload)</p>
+                                    <button type="submit" name="submit_gcash" class="btn btn-outline-warning btn-sm">
+                                        <i class="fas fa-upload me-2"></i>
+                                        Upload GCash Screenshot
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="mt-4">
-                        <label class="form-label fw-semibold">Upload GCash Receipt Screenshot</label>
-                        <input type="file" class="form-control" name="gcash_receipt" accept="image/*" required>
-                        <div class="form-text">Please upload a clear screenshot of your GCash payment receipt.</div>
-                    </div>
-
                     <div class="alert alert-warning mt-3">
-                        <strong>Note:</strong> Your booking will remain pending until the venue owner confirms payment receipt. You will receive a notification once confirmed.
+                        <strong>Payment Security:</strong> All payments are processed securely through PayPal. Your booking will be confirmed immediately after successful payment.
                     </div>
 
                     <hr>
                     <button type="submit" name="cancel" class="btn btn-secondary px-4 me-2" formnovalidate>Cancel</button>
-                    <button type="submit" name="submit" class="btn btn-danger px-4">Submit Booking Request</button>
                 </div>
                 </form>
             </div>
 
             <script>
-                document.addEventListener("DOMContentLoaded", function() {
-                    const venueId = "<?= $formData['venue_id'] ?? '' ?>";
+                // Toggle GCash payment option
+                function toggleGCashPayment() {
+                    const gcashOption = document.getElementById('gcash-payment-option');
+                    if (gcashOption.style.display === 'none') {
+                        gcashOption.style.display = 'block';
+                    } else {
+                        gcashOption.style.display = 'none';
+                    }
+                }
 
-                    if (venueId) {
-                        // Fetch venue details to get GCash QR
-                        fetch('api/venues.php?id=' + venueId)
-                            .then(response => response.json())
-                            .then(venue => {
-                                if (venue.gcash_qr) {
-                                    document.getElementById('gcashQrImage').src = venue.gcash_qr;
-                                } else {
-                                    document.getElementById('gcashQrImage').style.display = 'none';
-                                    const container = document.querySelector('.text-center.my-4');
-                                    container.innerHTML = '<p class="text-warning">GCash QR code not available for this venue. Please contact the venue directly.</p>';
-                                }
-                            })
-                            .catch(error => {
-                                console.error('Error fetching venue:', error);
-                                document.getElementById('gcashQrImage').style.display = 'none';
-                                const container = document.querySelector('.text-center.my-4');
-                                container.innerHTML = '<p class="text-danger">Unable to load payment information.</p>';
-                            });
+                // Handle PayPal payment completion
+                <?php if (isset($_GET['payment']) && $_GET['payment'] === 'completed'): ?>
+                document.addEventListener("DOMContentLoaded", function() {
+                    // Show success message for completed payment
+                    const container = document.getElementById('paypal-button-container');
+                    if (container) {
+                        container.innerHTML = `
+                            <div class="alert alert-success d-flex align-items-center p-3">
+                                <i class="fas fa-check-circle fa-2x me-3"></i>
+                                <div>
+                                    <h6 class="mb-1">Payment Completed Successfully!</h6>
+                                    <p class="mb-0">Your booking is being processed. You will receive a confirmation shortly.</p>
+                                </div>
+                            </div>
+                        `;
                     }
                 });
+                <?php else: ?>
+                // Initialize PayPal payment when page loads (only if not completed)
+                document.addEventListener("DOMContentLoaded", function() {
+                    console.log('Initializing PayPal on step 4');
+                    // Initialize PayPal payment flow
+                    if (window.PayPalIntegration) {
+                        window.PayPalIntegration.initializePayPalPayment().catch(error => {
+                            console.error('Failed to initialize PayPal:', error);
+                        });
+                    }
+                });
+                <?php endif; ?>
             </script>
         <?php endif; ?>
     </div>
@@ -518,6 +755,16 @@ document.addEventListener("DOMContentLoaded", function() {
         const eventTypeSelect = document.getElementById("eventType");
         const customContainer = document.getElementById("customEventTypeContainer");
 
+        console.log('Booking page DOM loaded. Elements found:', {
+            eventTypeSelect: !!eventTypeSelect,
+            customContainer: !!customContainer
+        });
+
+        if (!eventTypeSelect || !customContainer) {
+            console.warn('Required elements for event type toggle not found on this page');
+            return;
+        }
+
         function toggleCustomInput() {
             if (eventTypeSelect.value === "Other") {
                 customContainer.style.display = "block";
@@ -530,3 +777,6 @@ document.addEventListener("DOMContentLoaded", function() {
         toggleCustomInput(); // Run on load in case "Other" is already selected
     });
 </script>
+
+<!-- Include PayPal JavaScript Integration -->
+<script src="assets/js/paypal.js"></script>

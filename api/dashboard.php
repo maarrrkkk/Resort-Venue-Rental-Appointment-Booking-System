@@ -30,6 +30,7 @@ try {
                COALESCE(u.name, 'Unknown') AS user_name,
                COALESCE(v.name, 'Unknown') AS venue_name,
                b.total_amount AS amount,
+               b.payment_type,
                b.gcash_receipt,
                b.status,
                b.created_at

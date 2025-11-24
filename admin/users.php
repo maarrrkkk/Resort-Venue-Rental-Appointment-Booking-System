@@ -12,22 +12,8 @@
                         </button>
                     </div>
 
-                    <div class="table-responsive">
-                        <table class="table table-striped table-hover">
-                            <thead class="table-dark">
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Name</th>
-                                    <th>Email</th>
-                                    <th>Phone</th>
-                                    <th>Role</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="usersTable">
-                                <tr><td colspan="6" class="text-center">Loading...</td></tr>
-                            </tbody>
-                        </table>
+                    <div id="usersContainer" class="row">
+                        <div class="col-12 text-center py-3">Loading...</div>
                     </div>
                 </div>
             </div>
