@@ -33,7 +33,12 @@ try {
                b.payment_type,
                b.gcash_receipt,
                b.status,
-               b.created_at
+               b.created_at,
+               b.booking_date,
+               b.guest_count,
+               b.event_type,
+               b.special_requests,
+               b.payment_reference
         FROM bookings b
         LEFT JOIN users u ON b.user_id = u.id
         LEFT JOIN venues v ON b.venue_id = v.id

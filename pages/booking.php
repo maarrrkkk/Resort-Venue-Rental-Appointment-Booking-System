@@ -573,12 +573,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pricePerGuest = 50;
 
             $venueCapacity = 0;
+            $venueGCashQR = '';
             if ($venueId) {
                 require_once "config/database.php";
-                $stmt = $pdo->prepare("SELECT capacity FROM venues WHERE id = ?");
+                $stmt = $pdo->prepare("SELECT capacity, gcash_qr FROM venues WHERE id = ?");
                 $stmt->execute([$venueId]);
                 $venue = $stmt->fetch(PDO::FETCH_ASSOC);
                 $venueCapacity = (int)($venue['capacity'] ?? 0);
+                $venueGCashQR = $venue['gcash_qr'] ?? '';
             }
 
             $extraGuests = max(0, $guestCount - $venueCapacity);
@@ -647,6 +649,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 
                                 <div id="gcash-payment-option" style="display: none;" class="mt-3">
                                     <p class="text-muted small">Legacy GCash payment (requires manual screenshot upload)</p>
+                                    <?php if (!empty($venueGCashQR)): ?>
+                                    <div class="text-center mb-3">
+                                        <h6 class="fw-bold">Scan QR Code to Pay</h6>
+                                        <img src="<?= htmlspecialchars($venueGCashQR) ?>" alt="GCash QR Code" class="img-fluid rounded" style="max-width: 200px; max-height: 200px;">
+                                        <p class="text-muted small mt-2">Scan this QR code with your GCash app to pay ₱<?= number_format($totalCost, 2) ?></p>
+                                    </div>
+                                    <?php endif; ?>
                                     <button type="submit" name="submit_gcash" class="btn btn-outline-warning btn-sm">
                                         <i class="fas fa-upload me-2"></i>
                                         Upload GCash Screenshot

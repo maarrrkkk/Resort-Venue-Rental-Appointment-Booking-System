@@ -415,8 +415,13 @@ class AuthManager {
                             <p><strong>Venue:</strong> ${this.escapeHtml(b.venue_name)}</p>
                             <p><strong>Amount:</strong> ₱${parseFloat(b.amount ?? 0).toFixed(2)}</p>
                             <p><strong>Payment:</strong> ${b.payment_type || 'N/A'}</p>
+                            <p><strong>Payment Reference:</strong> ${b.payment_reference || 'N/A'}</p>
                             <p><strong>Receipt:</strong> ${b.gcash_receipt ? `<a href="${b.gcash_receipt}" target="_blank"><img src="${b.gcash_receipt}" alt="GCash Receipt" style="max-width: 100px; max-height: 100px;" class="img-thumbnail"></a>` : 'No receipt'}</p>
-                            <p><strong>Date:</strong> ${this.formatDate(b.created_at ?? '')}</p>
+                            <p><strong>Booking Date:</strong> ${b.booking_date || 'N/A'}</p>
+                            <p><strong>Guests:</strong> ${b.guest_count || 'N/A'}</p>
+                            <p><strong>Event Type:</strong> ${b.event_type || 'N/A'}</p>
+                            <p><strong>Special Requests:</strong> ${b.special_requests || 'None'}</p>
+                            <p><strong>Created:</strong> ${this.formatDate(b.created_at ?? '')}</p>
                         </div>
                         <div class="card-footer">
                             <button class="btn btn-sm btn-outline-primary me-1" onclick="updateStatus('${b.id}', '${b.status || 'pending'}')" title="Edit Status">
@@ -907,10 +912,37 @@ async function loadUserProfile() {
 
         if (container) {
             if (bookings.length > 0) {
-                container.innerHTML = '<ul class="list-group">' +
-                    bookings.map(b => `<li class="list-group-item">
-                        <strong>${b.venue_name}</strong> - ${b.booking_date} - ₱${b.amount} - <span class="badge bg-${getStatusColor(b.status)}">${b.status}</span>
-                    </li>`).join('') + '</ul>';
+                container.innerHTML = '<div class="accordion" id="bookingsAccordion">' +
+                    bookings.map((b, index) => `
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="heading${index}">
+                                <button class="accordion-button ${index > 0 ? 'collapsed' : ''}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse${index}" aria-expanded="${index === 0 ? 'true' : 'false'}" aria-controls="collapse${index}">
+                                    <strong>${b.venue_name}</strong> - ${b.booking_date || 'N/A'} - ₱${parseFloat(b.amount ?? 0).toFixed(2)} - <span class="badge bg-${getStatusColor(b.status)}">${b.status}</span>
+                                </button>
+                            </h2>
+                            <div id="collapse${index}" class="accordion-collapse collapse ${index === 0 ? 'show' : ''}" aria-labelledby="heading${index}" data-bs-parent="#bookingsAccordion">
+                                <div class="accordion-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <p><strong>Booking ID:</strong> ${b.id}</p>
+                                            <p><strong>Venue:</strong> ${b.venue_name}</p>
+                                            <p><strong>Booking Date:</strong> ${b.booking_date || 'N/A'}</p>
+                                            <p><strong>Guests:</strong> ${b.guest_count || 'N/A'}</p>
+                                            <p><strong>Event Type:</strong> ${b.event_type || 'N/A'}</p>
+                                            <p><strong>Amount:</strong> ₱${parseFloat(b.amount ?? 0).toFixed(2)}</p>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <p><strong>Payment Type:</strong> ${b.payment_type || 'N/A'}</p>
+                                            <p><strong>Payment Reference:</strong> ${b.payment_reference || 'N/A'}</p>
+                                            <p><strong>Status:</strong> <span class="badge bg-${getStatusColor(b.status)}">${b.status}</span></p>
+                                            <p><strong>Special Requests:</strong> ${b.special_requests || 'None'}</p>
+                                            <p><strong>Receipt:</strong> ${b.gcash_receipt ? `<a href="${b.gcash_receipt}" target="_blank" class="btn btn-sm btn-outline-primary">View Receipt</a>` : 'No receipt'}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('') + '</div>';
             } else {
                 container.innerHTML = '<p>No bookings found.</p>';
             }

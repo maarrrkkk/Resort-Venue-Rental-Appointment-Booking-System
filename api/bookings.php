@@ -31,7 +31,7 @@ function getBookings() {
     global $pdo;
     try {
         $stmt = $pdo->prepare("
-            SELECT b.id, b.booking_date, b.total_amount as amount, b.status, b.payment_type, v.name as venue_name, u.name as user_name
+            SELECT b.id, b.booking_date, b.guest_count, b.event_type, b.special_requests, b.payment_reference, b.total_amount as amount, b.status, b.payment_type, b.gcash_receipt, v.name as venue_name, u.name as user_name
             FROM bookings b
             JOIN venues v ON b.venue_id = v.id
             JOIN users u ON b.user_id = u.id
