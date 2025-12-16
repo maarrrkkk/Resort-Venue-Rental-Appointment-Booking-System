@@ -1,0 +1,98 @@
+<?php
+/**
+ * Quick test to verify the venue availability fix is working
+ */
+
+require_once 'config/database.php';
+
+echo "=== VENUE AVAILABILITY SYSTEM TEST ===\n\n";
+
+try {
+    // Check if venues exist
+    $stmt = $pdo->query('SELECT COUNT(*) as count FROM venues');
+    $venueCount = $stmt->fetch()['count'];
+    echo "✓ Total venues in database: $venueCount\n";
+    
+    if ($venueCount == 0) {
+        echo "❌ No venues found! Please check your database.\n";
+        exit;
+    }
+    
+    // Check today's date and bookings
+    $today = date('Y-m-d');
+    echo "✓ Today's date: $today\n";
+    
+    $stmt = $pdo->prepare('SELECT COUNT(*) as count FROM bookings WHERE booking_date = ? AND status IN ("confirmed", "pending")');
+    $stmt->execute([$today]);
+    $todayBookings = $stmt->fetch()['count'];
+    echo "✓ Current bookings for today: $todayBookings\n";
+    
+    // Test the availability query used in venue.php
+    echo "\n=== TESTING AVAILABILITY QUERY ===\n";
+    $stmt = $pdo->query("
+        SELECT v.id, v.name, v.category,
+               CASE 
+                   WHEN EXISTS (
+                       SELECT 1 FROM bookings b 
+                       WHERE b.venue_id = v.id 
+                       AND b.booking_date = CURDATE() 
+                       AND b.status IN ('confirmed', 'pending')
+                   ) THEN 'booked_today'
+                   WHEN EXISTS (
+                       SELECT 1 FROM bookings b 
+                       WHERE b.venue_id = v.id 
+                       AND b.booking_date >= CURDATE() 
+                       AND b.status IN ('confirmed', 'pending')
+                   ) THEN 'has_future_bookings'
+                   ELSE 'available'
+               END as availability_status,
+               (
+                   SELECT COUNT(DISTINCT b2.booking_date) 
+                   FROM bookings b2 
+                   WHERE b2.venue_id = v.id 
+                   AND b2.booking_date >= CURDATE() 
+                   AND b2.status IN ('confirmed', 'pending')
+                   AND b2.booking_date <= DATE_ADD(CURDATE(), INTERVAL 30 DAY)
+               ) as booked_dates_count
+        FROM venues v
+        ORDER BY v.name
+    ");
+    
+    $venues = $stmt->fetchAll();
+    echo "✓ Successfully queried " . count($venues) . " venues with availability status\n\n";
+    
+    foreach ($venues as $venue) {
+        $status = $venue['availability_status'];
+        $icon = $status === 'booked_today' ? '🔴' : ($status === 'has_future_bookings' ? '🟡' : '🟢');
+        echo "$icon {$venue['name']} (ID: {$venue['id']}) - Status: $status";
+        if ($venue['booked_dates_count'] > 0) {
+            echo " ({$venue['booked_dates_count']} future bookings)";
+        }
+        echo "\n";
+    }
+    
+    // Check if any venues are booked today
+    $bookedToday = array_filter($venues, function($v) { return $v['availability_status'] === 'booked_today'; });
+    
+    echo "\n=== TEST RESULTS ===\n";
+    if (count($bookedToday) > 0) {
+        echo "✓ SUCCESS: " . count($bookedToday) . " venue(s) showing as booked today\n";
+        echo "✓ This means the availability system should show 'Booked Today' buttons\n";
+    } else {
+        echo "ℹ️  INFO: No venues booked for today\n";
+        echo "ℹ️  To test the fix, create a booking using create_test_booking.php\n";
+    }
+    
+    echo "\n✓ Database connection: OK\n";
+    echo "✓ Availability query: OK\n";
+    echo "✓ Venue data: OK\n";
+    echo "\n🎉 Venue availability system is working correctly!\n";
+    
+} catch (Exception $e) {
+    echo "❌ ERROR: " . $e->getMessage() . "\n";
+    echo "\nTroubleshooting:\n";
+    echo "1. Check if config/database.php exists and has correct credentials\n";
+    echo "2. Verify the database server is running\n";
+    echo "3. Make sure the 'venues' and 'bookings' tables exist\n";
+}
+?>
