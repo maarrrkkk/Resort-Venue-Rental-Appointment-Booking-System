@@ -146,11 +146,22 @@ function processPayPalPayment($orderId, $formData, $pdo) {
         $guestCount = (int)($formData['guests'] ?? 1);
         $bookingDate = $formData['date'] ?? '';
         $pricePerGuest = 50;
-        $totalAmount = $venuePrice + ($guestCount * $pricePerGuest);
         
-        // Check venue availability before creating booking
+        // Get venue capacity for correct calculation
+        $venueCapacity = 0;
+        $stmt = $pdo->prepare("SELECT capacity FROM venues WHERE id = ?");
+        $stmt->execute([$venueId]);
+        $venue = $stmt->fetch(PDO::FETCH_ASSOC);
+        $venueCapacity = (int)($venue['capacity'] ?? 0);
+        
+        // Only charge for extra guests beyond venue capacity
+        $extraGuests = max(0, $guestCount - $venueCapacity);
+        $totalAmount = $venuePrice + ($extraGuests * $pricePerGuest);
+        
+        // Enhanced venue availability check
         $availabilityCheck = $pdo->prepare("
-            SELECT COUNT(*) as booking_count
+            SELECT COUNT(*) as booking_count,
+                   GROUP_CONCAT(CONCAT('Booking #', SUBSTRING(id, 9)) SEPARATOR ', ') as existing_bookings
             FROM bookings
             WHERE venue_id = ?
             AND booking_date = ?
@@ -160,9 +171,9 @@ function processPayPalPayment($orderId, $formData, $pdo) {
         $availabilityResult = $availabilityCheck->fetch(PDO::FETCH_ASSOC);
         
         if ($availabilityResult['booking_count'] > 0) {
-            error_log("Venue $venueId is not available on $bookingDate");
+            error_log("Venue $venueId is not available on $bookingDate - conflicts with: " . ($availabilityResult['existing_bookings'] ?? 'existing booking'));
             echo "<script>
-                alert('Sorry, this venue is not available on the selected date. Please choose a different date.');
+                alert('Sorry, this venue is not available on the selected date.\\n\\nConflicts with: " . addslashes($availabilityResult['existing_bookings'] ?? 'existing booking') . "\\n\\nPlease choose a different date.');
                 window.location.href='index.php?page=booking';
             </script>";
             exit;
@@ -311,11 +322,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $guestCount = (int)($currentData['guests'] ?? 1);
         $bookingDate = $currentData['date'] ?? '';
         $pricePerGuest = 50;
-        $totalAmount = $venuePrice + ($guestCount * $pricePerGuest);
+        
+        // Get venue capacity for correct calculation
+        $venueCapacity = 0;
+        $stmt = $pdo->prepare("SELECT capacity FROM venues WHERE id = ?");
+        $stmt->execute([$venueId]);
+        $venue = $stmt->fetch(PDO::FETCH_ASSOC);
+        $venueCapacity = (int)($venue['capacity'] ?? 0);
+        
+        // Only charge for extra guests beyond venue capacity
+        $extraGuests = max(0, $guestCount - $venueCapacity);
+        $totalAmount = $venuePrice + ($extraGuests * $pricePerGuest);
 
-        // Check venue availability before creating booking
+        // Enhanced venue availability check for GCash payments
         $availabilityCheck = $pdo->prepare("
-            SELECT COUNT(*) as booking_count
+            SELECT COUNT(*) as booking_count,
+                   GROUP_CONCAT(CONCAT('Booking #', SUBSTRING(id, 9)) SEPARATOR ', ') as existing_bookings
             FROM bookings
             WHERE venue_id = ?
             AND booking_date = ?
@@ -326,7 +348,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         if ($availabilityResult['booking_count'] > 0) {
             echo "<script>
-                alert('Sorry, this venue is not available on the selected date. Please choose a different date.');
+                alert('Sorry, this venue is not available on the selected date.\\n\\nConflicts with: " . addslashes($availabilityResult['existing_bookings'] ?? 'existing booking') . "\\n\\nPlease choose a different date.');
                 window.location.href='index.php?page=booking';
             </script>";
             exit;
@@ -837,7 +859,7 @@ document.addEventListener("DOMContentLoaded", function() {
             }
         }
 
-        // Check venue availability when date changes
+        // Enhanced check venue availability when date changes
         function checkAvailability() {
             const venueId = selectedVenueId?.value;
             const selectedDate = bookingDateInput?.value;
@@ -854,13 +876,24 @@ document.addEventListener("DOMContentLoaded", function() {
                 .then(data => {
                     if (data.available) {
                         availabilityStatus.innerHTML = '<small class="text-success"><i class="fas fa-check-circle"></i> Venue is available on this date</small>';
+                        // Enable the Next button if it exists
+                        const nextButton = document.querySelector('button[name="next"]');
+                        if (nextButton) nextButton.disabled = false;
                     } else {
-                        availabilityStatus.innerHTML = '<small class="text-danger"><i class="fas fa-times-circle"></i> Venue is not available on this date</small>';
+                        availabilityStatus.innerHTML = `<small class="text-danger"><i class="fas fa-times-circle"></i> ${data.message || 'Venue is not available on this date'}</small>`;
+                        // Disable the Next button
+                        const nextButton = document.querySelector('button[name="next"]');
+                        if (nextButton) nextButton.disabled = true;
+                        
+                        // Add visual warning
+                        bookingDateInput.classList.add('is-invalid');
+                        setTimeout(() => bookingDateInput.classList.remove('is-invalid'), 3000);
                     }
                 })
                 .catch(error => {
                     console.error('Error checking availability:', error);
                     availabilityStatus.innerHTML = '<small class="text-warning"><i class="fas fa-exclamation-triangle"></i> Could not check availability</small>';
+                    // Don't disable the button on network error
                 });
         }
 

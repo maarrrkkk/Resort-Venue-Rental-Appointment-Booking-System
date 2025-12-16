@@ -1,9 +1,26 @@
 // assets/js/auth.js
 class AuthManager {
     constructor() {
-        // Use absolute API path
-        this.baseURL = '/Github/resort-venue-rental-appointment-booking-system/api/';
+        // Use dynamic API path based on current location
+        this.baseURL = this.getBaseURL();
         this.init();
+    }
+
+    getBaseURL() {
+        // Get the current path and construct base URL dynamically
+        const path = window.location.pathname;
+        let baseURL = '';
+        
+        // If we're in a subdirectory (like /admin/), go up one level
+        if (path.includes('/admin/')) {
+            baseURL = '../api/';
+        } else if (path.includes('/client/')) {
+            baseURL = '../api/';
+        } else {
+            baseURL = 'api/';
+        }
+        
+        return baseURL;
     }
 
     init() {
@@ -1144,8 +1161,9 @@ async function saveAdminProfile() {
     }
 }
 
-// Init
+// Init - consolidated DOMContentLoaded listeners
 document.addEventListener('DOMContentLoaded', function() {
+    // Initialize AuthManager first
     window.authManager = new AuthManager();
 
     // Load profile if on profile page
@@ -1155,10 +1173,8 @@ document.addEventListener('DOMContentLoaded', function() {
     if (document.getElementById('adminName')) {
         loadAdminProfile();
     }
-});
 
-// Admin functions
-document.addEventListener('DOMContentLoaded', function() {
+    // Admin functions - load venues/users only after authManager is initialized
     if (document.getElementById('venuesContainer')) {
         loadVenues();
     } else if (document.getElementById('usersContainer')) {
