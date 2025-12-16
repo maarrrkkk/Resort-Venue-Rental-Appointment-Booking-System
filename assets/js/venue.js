@@ -8,28 +8,53 @@ class VenueManager {
         this.init();
     }
 
+    getBaseURL() {
+        // Fallback baseURL construction if authManager is not available
+        const path = window.location.pathname;
+        let baseURL = '';
+        
+        // If we're in a subdirectory (like /admin/), go up one level
+        if (path.includes('/admin/')) {
+            baseURL = '../api/';
+        } else if (path.includes('/client/')) {
+            baseURL = '../api/';
+        } else {
+            baseURL = 'api/';
+        }
+        
+        return baseURL;
+    }
+
     async loadVenues() {
         try {
-            // Wait for authManager to be available
-            if (!window.authManager || !window.authManager.baseURL) {
-                console.warn('AuthManager not available, retrying in 100ms...');
-                setTimeout(() => this.loadVenues(), 100);
-                return;
+            // Get baseURL from authManager or fallback
+            const baseURL = (window.authManager && window.authManager.baseURL) ? window.authManager.baseURL : this.getBaseURL();
+            console.log('Loading venues from:', baseURL + 'venues.php');
+            
+            const response = await fetch(baseURL + 'venues.php');
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
             
-            const response = await fetch(window.authManager.baseURL + 'venues.php');
             this.venues = await response.json();
             this.filteredVenues = [...this.venues];
+            console.log('Venues loaded:', this.venues.length);
             
             // Load availability data for all venues
             await this.loadVenueAvailability();
         } catch (error) {
             console.error('Error loading venues:', error);
+            // Set fallback venues data if API fails
+            this.venues = [];
+            this.filteredVenues = [];
         }
     }
 
     async loadVenueAvailability() {
         try {
+            // Get baseURL from authManager or fallback
+            const baseURL = (window.authManager && window.authManager.baseURL) ? window.authManager.baseURL : this.getBaseURL();
+            
             // Load availability for next 30 days for each venue
             const today = new Date();
             const futureDate = new Date(today);
@@ -38,9 +63,18 @@ class VenueManager {
             const startDate = today.toISOString().split('T')[0];
             const endDate = futureDate.toISOString().split('T')[0];
             
+            console.log('Loading availability from', startDate, 'to', endDate);
+            
             const availabilityPromises = this.venues.map(async (venue) => {
                 try {
-                    const response = await fetch(`${window.authManager.baseURL}venueAvailability.php?venue_id=${venue.id}&start_date=${startDate}&end_date=${endDate}`);
+                    const url = `${baseURL}venueAvailability.php?venue_id=${venue.id}&start_date=${startDate}&end_date=${endDate}`;
+                    console.log('Checking availability for venue:', venue.id, url);
+                    
+                    const response = await fetch(url);
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    
                     const data = await response.json();
                     
                     if (data.success) {
@@ -53,16 +87,33 @@ class VenueManager {
                         venue.availabilityPercentage = (availableDates / totalDates) * 100;
                         venue.availableDatesCount = availableDates;
                         venue.totalCheckedDates = totalDates;
+                        
+                        console.log(`Venue ${venue.name}: ${availableDates}/${totalDates} dates available`);
+                    } else {
+                        console.warn(`Failed to get availability for venue ${venue.id}:`, data.error || 'Unknown error');
+                        // Set default availability data
+                        this.venueAvailability.set(venue.id, []);
+                        venue.availabilityPercentage = 100;
+                        venue.availableDatesCount = 30;
+                        venue.totalCheckedDates = 30;
                     }
                 } catch (error) {
                     console.warn(`Failed to load availability for venue ${venue.id}:`, error);
                     // Set default availability data
                     this.venueAvailability.set(venue.id, []);
+                    venue.availabilityPercentage = 100;
+                    venue.availableDatesCount = 30;
+                    venue.totalCheckedDates = 30;
                 }
             });
             
             await Promise.all(availabilityPromises);
-            console.log('Venue availability data loaded');
+            console.log('Venue availability data loaded for all venues');
+            
+            // Refresh the display if venues are already rendered
+            if (document.getElementById('venuesContainer')) {
+                this.loadAllVenues();
+            }
             
         } catch (error) {
             console.error('Error loading venue availability:', error);
@@ -170,25 +221,35 @@ class VenueManager {
     }
 
     createVenueCard(venue, isFeatured = false) {
-        const limitedAmenities = venue.amenities.slice(0, 3);
-        const extraCount = venue.amenities.length - 3;
+        const limitedAmenities = venue.amenities ? venue.amenities.slice(0, 3) : [];
+        const extraCount = venue.amenities ? venue.amenities.length - 3 : 0;
         
-        // Get dynamic availability data
+        // Get dynamic availability data with debugging
         const availabilityData = this.venueAvailability.get(venue.id) || [];
         const today = new Date().toISOString().split('T')[0];
         const todayAvailability = availabilityData.find(a => a.date === today);
         const hasTodayBookings = todayAvailability && !todayAvailability.available;
         
-        // Calculate availability status
+        // Calculate availability status with safe defaults
         const availableDatesCount = venue.availableDatesCount || 0;
         const totalDatesCount = venue.totalCheckedDates || 30;
         const availabilityPercentage = venue.availabilityPercentage || 100;
+        
+        // Debug logging
+        console.log(`Venue ${venue.name} availability:`, {
+            availableDatesCount,
+            totalDatesCount,
+            availabilityPercentage,
+            hasTodayBookings,
+            todayAvailability
+        });
         
         // Determine availability status for display
         let availabilityBadge = '';
         let buttonClass = 'btn-danger';
         let buttonText = 'Book This Venue';
         let buttonDisabled = '';
+        let availabilityInfo = '';
         
         if (hasTodayBookings) {
             // Venue has bookings today
@@ -196,54 +257,57 @@ class VenueManager {
             buttonClass = 'btn-secondary';
             buttonText = 'Booked Today';
             buttonDisabled = 'disabled';
+            availabilityInfo = '<small class="text-danger"><i class="fas fa-times-circle me-1"></i>Not available today</small>';
         } else if (availabilityPercentage === 0) {
             // No availability in the next 30 days
             availabilityBadge = '<span class="badge bg-warning position-absolute top-0 end-0 m-2">Fully Booked</span>';
             buttonClass = 'btn-warning';
             buttonText = 'Fully Booked';
             buttonDisabled = 'disabled';
+            availabilityInfo = '<small class="text-warning"><i class="fas fa-exclamation-triangle me-1"></i>No dates available</small>';
         } else if (availabilityPercentage < 50) {
             // Low availability
             availabilityBadge = '<span class="badge bg-warning position-absolute top-0 end-0 m-2">Limited Availability</span>';
             buttonClass = 'btn-warning';
             buttonText = `Book (${availableDatesCount} dates left)`;
+            availabilityInfo = `<small class="text-warning"><i class="fas fa-calendar me-1"></i>${availableDatesCount} of ${totalDatesCount} days available</small>`;
         } else {
             // Good availability
             availabilityBadge = '<span class="badge bg-success position-absolute top-0 end-0 m-2">Available</span>';
             buttonClass = 'btn-danger';
             buttonText = `Book This Venue (${availableDatesCount} dates)`;
+            availabilityInfo = `<small class="text-success"><i class="fas fa-check-circle me-1"></i>${availableDatesCount} of ${totalDatesCount} days available</small>`;
         }
+
+        // Ensure we have required data with fallbacks
+        const venueImages = venue.images && venue.images.length > 0 ? venue.images : ['assets/images/default-venue-image.png'];
+        const venueAmenities = venue.amenities || [];
 
         return `
             <div class="col-lg-4 col-md-6 venue-item fade-in" data-category="${venue.category}">
                 <div class="card h-100">
                     <div class="position-relative">
-                        <img src="${venue.images[0]}" class="card-img-top" alt="${venue.name}">
+                        <img src="${venueImages[0]}" class="card-img-top" alt="${venue.name}" onerror="this.src='assets/images/default-venue-image.png'">
                         <span class="badge bg-secondary position-absolute top-0 start-0 m-2 text-capitalize">${venue.category}</span>
                         ${availabilityBadge}
                     </div>
                     <div class="card-body d-flex flex-column">
                         <h5 class="card-title">${venue.name}</h5>
-                        <p class="card-text text-muted">${venue.description}</p>
+                        <p class="card-text text-muted">${venue.description || 'No description available'}</p>
                         
                         <div class="mb-3">
                             <small class="text-muted d-flex align-items-center mb-2">
                                 <i class="fas fa-users me-2"></i>
-                                Capacity: ${venue.capacity} guests
+                                Capacity: ${venue.capacity || 'N/A'} guests
                             </small>
-                            ${availableDatesCount < totalDatesCount ? `
-                            <small class="text-muted d-flex align-items-center">
-                                <i class="fas fa-calendar me-2"></i>
-                                ${availableDatesCount} of ${totalDatesCount} days available
-                            </small>
-                            ` : ''}
+                            ${availabilityInfo}
                         </div>
                         
                         <div class="mb-3">
                             <h6 class="mb-2">Amenities:</h6>
                             <div class="amenity-list">
                                 ${limitedAmenities.map(amenity => `<span class="badge bg-light text-dark amenity-badge">${amenity}</span>`).join('')}
-                                ${extraCount > 0 ? `<span class="badge bg-light text-dark amenity-badge">+${extraCount} more</span>` : ''}
+                                ${extraCount > 0 ? `<span class="badge bg-light text-dark amenity-badge">+${extraCount} more</span>` : '<span class="text-muted small">No amenities listed</span>'}
                             </div>
                         </div>
                         
@@ -251,7 +315,7 @@ class VenueManager {
                             <div class="d-flex gap-7 justify-content-between align-items-center border-top pt-3">
                                 <div>
                                     <small class="text-muted">Starting from</small>
-                                    <div class="h5 mb-0">₱${venue.price.toLocaleString()}</div>
+                                    <div class="h5 mb-0">₱${(venue.price || 0).toLocaleString()}</div>
                                 </div>
                                 <button class="btn ${buttonClass} ms-5 venue-select-btn"
                                         data-venue-id="${venue.id}"
