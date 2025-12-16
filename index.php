@@ -5,7 +5,7 @@ require_once "includes/auth.php";
 
 // Determine current page (default = home)
 $page = isset($_GET['page']) ? $_GET['page'] : 'home';
-$validPages = ['home', 'venue', 'booking', 'about', 'contact', 'login', 'register', 'dashboard', 'profile', 'resetPassword'];
+$validPages = ['home', 'venue', 'booking', 'about', 'contact', 'login', 'register', 'dashboard', 'profile', 'resetPassword', 'payment_success', 'my_bookings'];
 if (!in_array($page, $validPages)) {
     $page = 'home';
 }
@@ -55,6 +55,20 @@ function renderPage($page, $user, $isAuthenticated)
                 exit;
             }
             include "pages/profile.php";
+            break;
+        case 'payment_success':
+            if (!$isAuthenticated) {
+                header("Location: index.php?page=login");
+                exit;
+            }
+            include "pages/payment_success.php";
+            break;
+        case 'my_bookings':
+            if (!$isAuthenticated) {
+                header("Location: index.php?page=login");
+                exit;
+            }
+            include "pages/my_bookings.php";
             break;
         default:
             include "pages/home.php";

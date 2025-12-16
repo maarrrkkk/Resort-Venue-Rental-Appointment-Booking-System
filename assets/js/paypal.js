@@ -161,7 +161,7 @@ async function handlePayPalApprove(data, actions, bookingData) {
         hidePaymentLoading();
         
         // Show success message
-        showPaymentSuccess('Payment completed successfully! Redirecting...');
+        showPaymentSuccess('Payment completed successfully! Creating your booking...');
         
         // Store payment details for final booking creation
         sessionStorage.setItem('paypalPaymentDetails', JSON.stringify({
@@ -174,10 +174,10 @@ async function handlePayPalApprove(data, actions, bookingData) {
             currency: result.currency
         }));
         
-        // Redirect to booking completion
+        // Redirect to booking completion (the booking will be created server-side)
         setTimeout(() => {
             window.location.href = 'index.php?page=booking&payment=completed&order_id=' + data.orderID;
-        }, 2000);
+        }, 1500);
         
         return result;
         
@@ -242,7 +242,11 @@ function showPaymentSuccess(message) {
     if (container) {
         container.innerHTML = `
             <div class="alert alert-success d-flex align-items-center p-4">
-                <i class="fas fa-check-circle fa-2x me-3"></i>
+                <div class="me-3">
+                    <div class="spinner-border spinner-border-sm text-success" role="status">
+                        <span class="visually-hidden">Processing...</span>
+                    </div>
+                </div>
                 <div>
                     <h5 class="mb-1">Payment Successful!</h5>
                     <p class="mb-0">${message}</p>

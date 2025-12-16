@@ -144,8 +144,29 @@ function processPayPalPayment($orderId, $formData, $pdo) {
         $venueId = $formData['venue_id'] ?? '';
         $venuePrice = (int)($formData['venue_price'] ?? 0);
         $guestCount = (int)($formData['guests'] ?? 1);
+        $bookingDate = $formData['date'] ?? '';
         $pricePerGuest = 50;
         $totalAmount = $venuePrice + ($guestCount * $pricePerGuest);
+        
+        // Check venue availability before creating booking
+        $availabilityCheck = $pdo->prepare("
+            SELECT COUNT(*) as booking_count
+            FROM bookings
+            WHERE venue_id = ?
+            AND booking_date = ?
+            AND status IN ('confirmed', 'pending')
+        ");
+        $availabilityCheck->execute([$venueId, $bookingDate]);
+        $availabilityResult = $availabilityCheck->fetch(PDO::FETCH_ASSOC);
+        
+        if ($availabilityResult['booking_count'] > 0) {
+            error_log("Venue $venueId is not available on $bookingDate");
+            echo "<script>
+                alert('Sorry, this venue is not available on the selected date. Please choose a different date.');
+                window.location.href='index.php?page=booking';
+            </script>";
+            exit;
+        }
         
         $stmt = $pdo->prepare("
             INSERT INTO bookings (
@@ -174,17 +195,24 @@ function processPayPalPayment($orderId, $formData, $pdo) {
             $paymentDetails['paypal_capture_id']
         ]);
         
+        // Store booking details for success page
+        $_SESSION['completed_booking'] = [
+            'id' => $bookingId,
+            'venue_name' => $formData['venue_name'] ?? 'Selected Venue',
+            'booking_date' => $formData['date'] ?? '',
+            'guest_count' => $guestCount,
+            'event_type' => $formData['event_type'] ?? '',
+            'total_amount' => $totalAmount
+        ];
+        
         // Clear session data
         unset($_SESSION['paypal_payment_details']);
         unset($_SESSION['paypalBookingData']);
         $_SESSION['step'] = 1;
         unset($_SESSION['form']);
         
-        // Show success message and redirect
-        echo "<script>
-            alert('Booking completed successfully with PayPal payment!');
-            window.location.href='index.php?page=my_bookings';
-        </script>";
+        // Redirect to payment success page
+        header("Location: index.php?page=payment_success&booking_id=" . $bookingId);
         exit;
         
     } catch (Exception $e) {
@@ -281,8 +309,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $venueId = $currentData['venue_id'] ?? '';
         $venuePrice = (int)($currentData['venue_price'] ?? 0);
         $guestCount = (int)($currentData['guests'] ?? 1);
+        $bookingDate = $currentData['date'] ?? '';
         $pricePerGuest = 50;
         $totalAmount = $venuePrice + ($guestCount * $pricePerGuest);
+
+        // Check venue availability before creating booking
+        $availabilityCheck = $pdo->prepare("
+            SELECT COUNT(*) as booking_count
+            FROM bookings
+            WHERE venue_id = ?
+            AND booking_date = ?
+            AND status IN ('confirmed', 'pending')
+        ");
+        $availabilityCheck->execute([$venueId, $bookingDate]);
+        $availabilityResult = $availabilityCheck->fetch(PDO::FETCH_ASSOC);
+        
+        if ($availabilityResult['booking_count'] > 0) {
+            echo "<script>
+                alert('Sorry, this venue is not available on the selected date. Please choose a different date.');
+                window.location.href='index.php?page=booking';
+            </script>";
+            exit;
+        }
 
         // Generate payment reference for GCash
         $paymentReference = 'GCASH_' . uniqid();
@@ -387,7 +435,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                                 <div class="mb-3">
                                     <label class="form-label fw-semibold">Event Date</label>
-                                    <input type="date" class="form-control" name="date" required>
+                                    <input type="date" class="form-control" name="date" id="bookingDate" required>
+                                    <div id="availabilityStatus" class="mt-2"></div>
                                 </div>
 
                                 <!-- Hidden input for selected venue -->
@@ -763,10 +812,16 @@ document.addEventListener("DOMContentLoaded", function() {
     document.addEventListener("DOMContentLoaded", function() {
         const eventTypeSelect = document.getElementById("eventType");
         const customContainer = document.getElementById("customEventTypeContainer");
+        const bookingDateInput = document.getElementById("bookingDate");
+        const availabilityStatus = document.getElementById("availabilityStatus");
+        const selectedVenueId = document.getElementById("selectedVenueId");
 
         console.log('Booking page DOM loaded. Elements found:', {
             eventTypeSelect: !!eventTypeSelect,
-            customContainer: !!customContainer
+            customContainer: !!customContainer,
+            bookingDateInput: !!bookingDateInput,
+            availabilityStatus: !!availabilityStatus,
+            selectedVenueId: !!selectedVenueId
         });
 
         if (!eventTypeSelect || !customContainer) {
@@ -782,8 +837,40 @@ document.addEventListener("DOMContentLoaded", function() {
             }
         }
 
+        // Check venue availability when date changes
+        function checkAvailability() {
+            const venueId = selectedVenueId?.value;
+            const selectedDate = bookingDateInput?.value;
+
+            if (!venueId || !selectedDate || !availabilityStatus) {
+                return;
+            }
+
+            // Show loading state
+            availabilityStatus.innerHTML = '<small class="text-muted"><i class="fas fa-spinner fa-spin"></i> Checking availability...</small>';
+
+            fetch(`api/checkAvailability.php?venue_id=${encodeURIComponent(venueId)}&date=${encodeURIComponent(selectedDate)}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.available) {
+                        availabilityStatus.innerHTML = '<small class="text-success"><i class="fas fa-check-circle"></i> Venue is available on this date</small>';
+                    } else {
+                        availabilityStatus.innerHTML = '<small class="text-danger"><i class="fas fa-times-circle"></i> Venue is not available on this date</small>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking availability:', error);
+                    availabilityStatus.innerHTML = '<small class="text-warning"><i class="fas fa-exclamation-triangle"></i> Could not check availability</small>';
+                });
+        }
+
         eventTypeSelect.addEventListener("change", toggleCustomInput);
         toggleCustomInput(); // Run on load in case "Other" is already selected
+
+        // Add availability checking for date input
+        if (bookingDateInput && selectedVenueId) {
+            bookingDateInput.addEventListener("change", checkAvailability);
+        }
     });
 </script>
 

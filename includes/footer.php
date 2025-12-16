@@ -1,5 +1,5 @@
 <!-- Footer -->
-<footer class="bg-whtie text-dark pt-5 shadow-lg pb-4 mt-5">
+<footer class="bg-whtie text-dark pt-5 shadow-lg pb-4">
     <div class="container">
 
         <div class="row">

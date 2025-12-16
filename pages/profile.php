@@ -30,6 +30,85 @@ $user = $_SESSION['user'] ?? null;
                         <div id="userBookings">
                             <p>Loading bookings...</p>
                         </div>
+                        <script>
+                            document.addEventListener("DOMContentLoaded", function() {
+                                loadUserBookings();
+                            });
+
+                            function loadUserBookings() {
+                                const userId = "<?php echo htmlspecialchars($user['id'] ?? ''); ?>";
+                                const bookingsContainer = document.getElementById('userBookings');
+
+                                if (!userId) {
+                                    bookingsContainer.innerHTML = '<p class="text-muted">Please log in to view your bookings.</p>';
+                                    return;
+                                }
+
+                                fetch(`api/bookings.php?user_id=${encodeURIComponent(userId)}`)
+                                    .then(response => response.json())
+                                    .then(data => {
+                                        if (data.length === 0) {
+                                            bookingsContainer.innerHTML = '<p class="text-muted">No bookings found.</p>';
+                                            return;
+                                        }
+
+                                        let html = '';
+                                        data.forEach(booking => {
+                                            const statusClass = {
+                                                'confirmed': 'success',
+                                                'pending': 'warning',
+                                                'cancelled': 'danger',
+                                                'completed': 'info'
+                                            }[booking.status] || 'secondary';
+
+                                            const paymentStatusClass = {
+                                                'paid': 'success',
+                                                'pending': 'warning',
+                                                'failed': 'danger'
+                                            }[booking.payment_type] || 'secondary';
+
+                                            html += `
+                                                <div class="card mb-3">
+                                                    <div class="card-body">
+                                                        <div class="row">
+                                                            <div class="col-md-8">
+                                                                <h6 class="card-title">${booking.venue_name}</h6>
+                                                                <p class="card-text mb-1">
+                                                                    <i class="fas fa-calendar me-2"></i>
+                                                                    ${new Date(booking.booking_date).toLocaleDateString()}
+                                                                </p>
+                                                                <p class="card-text mb-1">
+                                                                    <i class="fas fa-users me-2"></i>
+                                                                    ${booking.guest_count} guests
+                                                                </p>
+                                                                <p class="card-text mb-1">
+                                                                    <i class="fas fa-tag me-2"></i>
+                                                                    ${booking.event_type}
+                                                                </p>
+                                                                <p class="card-text mb-1">
+                                                                    <i class="fas fa-money-bill me-2"></i>
+                                                                    ₱${parseFloat(booking.amount).toLocaleString()}
+                                                                </p>
+                                                            </div>
+                                                            <div class="col-md-4 text-md-end">
+                                                                <span class="badge bg-${statusClass} mb-2">${booking.status.toUpperCase()}</span><br>
+                                                                <span class="badge bg-${paymentStatusClass} mb-2">${booking.payment_type}</span><br>
+                                                                <small class="text-muted">Booking ID: ${booking.id}</small>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            `;
+                                        });
+
+                                        bookingsContainer.innerHTML = html;
+                                    })
+                                    .catch(error => {
+                                        console.error('Error loading bookings:', error);
+                                        bookingsContainer.innerHTML = '<p class="text-danger">Error loading bookings. Please try again later.</p>';
+                                    });
+                            }
+                        </script>
                     </div>
                 </div>
             </div>
